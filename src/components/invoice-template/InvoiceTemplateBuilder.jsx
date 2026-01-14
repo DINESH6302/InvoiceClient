@@ -19,6 +19,7 @@ const initialTemplate = {
     ]
   },
   invoiceMeta: {
+    columnCount: 1,
     fields: [
       { key: "invoice_no", label: "Invoice #", visible: true },
       { key: "date", label: "Date", visible: true },
@@ -26,29 +27,43 @@ const initialTemplate = {
   },
   customerDetails: {
     layout: "side-by-side",
-    billingTitle: "Bill To",
-    shippingTitle: "Ship To",
-    fields: ["name", "address", "gstin", "state"] 
+    billing: {
+        title: "Bill To",
+        fields: [
+            { key: "name", label: "Name", visible: true },
+            { key: "address", label: "Address", visible: true },
+            { key: "gstin", label: "GSTIN", visible: true },
+            { key: "state", label: "State", visible: true }
+        ]
+    },
+    shipping: {
+        title: "Ship To",
+        fields: [
+            { key: "name", label: "Name", visible: true },
+            { key: "address", label: "Address", visible: true },
+            { key: "state", label: "State", visible: true }
+        ]
+    }
   },
   table: {
     enableResize: true,
     columns: [
       { key: "sno", label: "#", width: "10%", visible: true, align: "center" },
       { key: "description", label: "Item & Description", width: "40%", visible: true, align: "left" },
-      { key: "qty", label: "Qty", width: "15%", visible: true, align: "right" },
-      { key: "rate", label: "Rate", width: "15%", visible: true, align: "right" },
+      { key: "quantity", label: "Qty", width: "15%", visible: true, align: "right" },
+      { key: "price", label: "price", width: "15%", visible: true, align: "right" },
       { key: "total", label: "Amount", width: "20%", visible: true, align: "right" }
     ]
   },
   summary: {
     fields: [
-      { key: "subtotal", label: "Sub Total", visible: true },
-      { key: "grand_total", label: "Total (INR)", visible: true, bold: true },
+      { key: "subtotal", label: "Sub Total", visible: true, type: "system", sourceColumn: "total" }, // Default calculated from Total column
+      { key: "grand_total", label: "Total (INR)", visible: true, bold: true, type: "system" },
     ]
   },
   footer: {
-    bankDetails: { visible: true, content: "Bank Name: ..." },
-    termsAndConditions: { visible: true, content: "..." },
+    // Bank details removed as per request
+    termsAndConditions: { visible: true, content: "Terms & Conditions applied." },
     signatureLabel: "Authorized Signatory"
   }
 };

@@ -96,6 +96,101 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
     setTemplate(newTemplate);
   };
 
+  const renderInvoiceMeta = () => (
+    <div className="space-y-6">
+        <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold">Layout Columns</Label>
+                    <span className="text-xs text-muted-foreground font-medium bg-slate-100 px-2 py-1 rounded">
+                        {template.invoiceMeta.columnCount || 1} Column(s)
+                    </span>
+                </div>
+                <div className="pt-2">
+                    <input 
+                        type="range"
+                        min="1"
+                        max="4"
+                        step="1"
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        value={template.invoiceMeta.columnCount || 1} 
+                        onChange={e => {
+                            const newT = {...template};
+                            newT.invoiceMeta.columnCount = parseInt(e.target.value);
+                            setTemplate(newT);
+                        }}
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-1">
+                        <span>1</span>
+                        <span>2</span>
+                        <span>3</span>
+                        <span>4</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div className="space-y-4">
+           <div className="flex items-center justify-between">
+             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Fields</h3>
+             <Button 
+                onClick={() => handleAddField('invoiceMeta')}
+                size="sm" 
+                className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+             >
+                <Plus className="w-3 h-3" /> Add Field
+             </Button>
+           </div>
+           
+           <div className="grid gap-2">
+             {template.invoiceMeta.fields.filter(f => f.key !== 'invoice_no' && f.key !== 'date').map((field, idx) => (
+               <div key={idx} className="group p-3 bg-card border rounded-md shadow-sm hover:shadow-md transition-all flex items-start gap-3">
+                 <GripVertical className="w-4 h-4 text-gray-300 cursor-move mt-2" />
+                 
+                 <div className="flex-1 space-y-2">
+                     <div className="flex items-center justify-between">
+                        <Label className="font-semibold text-gray-700 capitalize text-sm">
+                            <Input 
+                                value={field.key.replace('custom_', 'Field ')} 
+                                readOnly
+                                className="h-6 text-xs w-32 border-none p-0 focus-visible:ring-0 font-semibold bg-transparent"
+                            />
+                        </Label>
+                        <div className="flex items-center gap-2">
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                onClick={() => {
+                                    // Find logic index since we are mapping a filtered list
+                                    const realIndex = template.invoiceMeta.fields.findIndex(f => f.key === field.key);
+                                    handleRemoveField('invoiceMeta', realIndex);
+                                }}
+                            >
+                                <Trash2 className="w-3 h-3" />
+                            </Button>
+                        </div>
+                     </div>
+                     
+                     <div className="pt-1">
+                        <Input 
+                            value={field.label} 
+                            onChange={(e) => {
+                                const realIndex = template.invoiceMeta.fields.findIndex(f => f.key === field.key);
+                                handleFieldChange('invoiceMeta', realIndex, 'label', e.target.value);
+                            }} 
+                            className="h-7 text-xs"
+                            placeholder="Display Label"
+                        />
+                    </div>
+                 </div>
+               </div>
+             ))}
+           </div>
+       </div>
+    </div>
+  );
+
   const renderCompanyDetails = () => (
     <div className="space-y-6">
        <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
@@ -199,6 +294,36 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         }}
                     />
                     <span className="text-xs text-muted-foreground">px</span>
+                </div>
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t space-y-4">
+            <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Standard Fields</Label>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label className="text-xs">Invoice # Label</Label>
+                    <Input 
+                        value={template.invoiceMeta.fields.find(f => f.key === 'invoice_no')?.label || 'Invoice #'} 
+                        onChange={e => {
+                            const newT = {...template};
+                            const idx = newT.invoiceMeta.fields.findIndex(f => f.key === 'invoice_no');
+                            if(idx > -1) newT.invoiceMeta.fields[idx].label = e.target.value;
+                            setTemplate(newT);
+                        }}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs">Date Label</Label>
+                    <Input 
+                        value={template.invoiceMeta.fields.find(f => f.key === 'date')?.label || 'Date'} 
+                        onChange={e => {
+                            const newT = {...template};
+                            const idx = newT.invoiceMeta.fields.findIndex(f => f.key === 'date');
+                            if(idx > -1) newT.invoiceMeta.fields[idx].label = e.target.value;
+                            setTemplate(newT);
+                        }}
+                    />
                 </div>
             </div>
           </div>
@@ -408,13 +533,291 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
     </div>
   );
   
+  const renderCustomerDetails = () => (
+    <div className="space-y-8">
+        {/* Billing Section */}
+        <div className="space-y-4">
+           <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                 <Label className="text-base font-semibold">Billing Section</Label>
+              </div>
+              <div className="space-y-2">
+                 <Label className="text-sm">Section Title</Label>
+                 <Input 
+                    value={template.customerDetails.billing.title} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.customerDetails.billing.title = e.target.value;
+                        setTemplate(newT);
+                    }}
+                 />
+              </div>
+           </div>
+
+           <div className="space-y-4">
+               <div className="flex items-center justify-between">
+                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Billing Fields</h3>
+                 <Button 
+                    onClick={() => {
+                        const newT = {...template};
+                        newT.customerDetails.billing.fields.push({ key: `custom_${Date.now()}`, label: "New Field", visible: true });
+                        setTemplate(newT);
+                    }}
+                    size="sm" 
+                    className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                 >
+                    <Plus className="w-3 h-3" /> Add Field
+                 </Button>
+               </div>
+               
+               <div className="grid gap-2">
+                 {template.customerDetails.billing.fields.map((field, idx) => (
+                   <div key={idx} className="group p-3 bg-card border rounded-md shadow-sm hover:shadow-md transition-all flex items-start gap-3">
+                     <GripVertical className="w-4 h-4 text-gray-300 cursor-move mt-2" />
+                     <div className="flex-1 space-y-2">
+                         <div className="flex items-center justify-between">
+                            <Label className="font-semibold text-gray-700 capitalize text-sm">
+                                {idx < 4 ? field.key : (
+                                    <Input 
+                                        value={field.key} 
+                                        className="h-6 text-xs w-32 border-none p-0 focus-visible:ring-0 font-semibold"
+                                        onChange={(e) => {
+                                            const newT = {...template};
+                                            newT.customerDetails.billing.fields[idx].key = e.target.value;
+                                            setTemplate(newT);
+                                        }}
+                                    />
+                                )}
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                        const newT = {...template};
+                                        newT.customerDetails.billing.fields.splice(idx, 1);
+                                        setTemplate(newT);
+                                    }}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </Button>
+                            </div>
+                         </div>
+                         <div className="pt-1">
+                            <Input 
+                                value={field.label} 
+                                onChange={(e) => {
+                                    const newT = {...template};
+                                    newT.customerDetails.billing.fields[idx].label = e.target.value;
+                                    setTemplate(newT);
+                                }} 
+                                className="h-7 text-xs"
+                                placeholder="Display Label"
+                            />
+                        </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+           </div>
+        </div>
+
+        {/* Shipping Section */}
+        <div className="space-y-4 pt-4 border-t">
+           <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                 <Label className="text-base font-semibold">Shipping Section</Label>
+              </div>
+              <div className="space-y-2">
+                 <Label className="text-sm">Section Title</Label>
+                 <Input 
+                    value={template.customerDetails.shipping.title} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.customerDetails.shipping.title = e.target.value;
+                        setTemplate(newT);
+                    }}
+                 />
+              </div>
+           </div>
+
+           <div className="space-y-4">
+               <div className="flex items-center justify-between">
+                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Shipping Fields</h3>
+                 <Button 
+                    onClick={() => {
+                        const newT = {...template};
+                        newT.customerDetails.shipping.fields.push({ key: `custom_${Date.now()}`, label: "New Field", visible: true });
+                        setTemplate(newT);
+                    }}
+                    size="sm" 
+                    className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                 >
+                    <Plus className="w-3 h-3" /> Add Field
+                 </Button>
+               </div>
+               
+               <div className="grid gap-2">
+                 {template.customerDetails.shipping.fields.map((field, idx) => (
+                   <div key={idx} className="group p-3 bg-card border rounded-md shadow-sm hover:shadow-md transition-all flex items-start gap-3">
+                     <GripVertical className="w-4 h-4 text-gray-300 cursor-move mt-2" />
+                     <div className="flex-1 space-y-2">
+                         <div className="flex items-center justify-between">
+                            <Label className="font-semibold text-gray-700 capitalize text-sm">
+                                {idx < 3 ? field.key : (
+                                    <Input 
+                                        value={field.key} 
+                                        className="h-6 text-xs w-32 border-none p-0 focus-visible:ring-0 font-semibold"
+                                        onChange={(e) => {
+                                            const newT = {...template};
+                                            newT.customerDetails.shipping.fields[idx].key = e.target.value;
+                                            setTemplate(newT);
+                                        }}
+                                    />
+                                )}
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                        const newT = {...template};
+                                        newT.customerDetails.shipping.fields.splice(idx, 1);
+                                        setTemplate(newT);
+                                    }}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </Button>
+                            </div>
+                         </div>
+                         <div className="pt-1">
+                            <Input 
+                                value={field.label} 
+                                onChange={(e) => {
+                                    const newT = {...template};
+                                    newT.customerDetails.shipping.fields[idx].label = e.target.value;
+                                    setTemplate(newT);
+                                }} 
+                                className="h-7 text-xs"
+                                placeholder="Display Label"
+                            />
+                        </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+           </div>
+        </div>
+    </div>
+  );
+  
+  const renderSummary = () => (
+    <div className="space-y-6">
+       <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
+           {/* Header */}
+           <div className="flex items-center justify-between">
+             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Total Fields</h3>
+             <Button 
+                onClick={() => {
+                    const newT = {...template};
+                    newT.summary.fields.push({ key: `custom_${Date.now()}`, label: "Total Qty", visible: true, type: "manual" });
+                    setTemplate(newT);
+                }}
+                size="sm" 
+                className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+             >
+                <Plus className="w-3 h-3" /> Add Field
+             </Button>
+           </div>
+           
+           <div className="space-y-3">
+             {template.summary.fields.map((field, idx) => (
+               <div key={idx} className="group p-4 bg-card border rounded-md shadow-sm hover:shadow-md transition-all space-y-3">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-gray-300 cursor-move" />
+                        <span className="font-semibold text-gray-700 text-sm">{field.label || 'Field'}</span>
+                    </div>
+                    
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                            const newT = {...template};
+                            newT.summary.fields.splice(idx, 1);
+                            setTemplate(newT);
+                        }}
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </Button>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4 pt-2 border-t mt-2">
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Label</Label>
+                        <Input 
+                            value={field.label} 
+                            onChange={(e) => handleFieldChange('summary', idx, 'label', e.target.value)} 
+                            className="h-7 text-xs"
+                        />
+                    </div>
+                     <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Value Source</Label>
+                        <select 
+                            className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={field.sourceColumn || ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const newT = JSON.parse(JSON.stringify(template));
+                                newT.summary.fields[idx].sourceColumn = val;
+                                // If source is selected, it's calculated. Else manual.
+                                // We don't necessarily need a 'type' field if sourceColumn presence detects it, but good for clarity
+                                setTemplate(newT);
+                            }}
+                        >
+                            <option value="">Manual Input</option>
+                            <optgroup label="Sum of Table Column">
+                                {template.table.columns
+                                    .filter(col => col.key !== 'sno' && col.key !== 'description')
+                                    .map(col => (
+                                    <option key={col.key} value={col.key}>
+                                        Sum({col.label})
+                                    </option>
+                                ))}
+                            </optgroup>
+                        </select>
+                    </div>
+                 </div>
+
+                 {/* Style Toggles */}
+                 <div className="flex items-center justify-between pt-2">
+                    <Label className="text-[10px] text-muted-foreground">Bold Text</Label>
+                    <Switch 
+                        checked={field.bold || false} 
+                        onCheckedChange={(checked) => handleFieldChange('summary', idx, 'bold', checked)}
+                        className="scale-75 origin-right"
+                    />
+                 </div>
+               </div>
+             ))}
+           </div>
+       </div>
+    </div>
+  );
+  
   return (
     <div className="flex flex-col h-full relative">
         <ScrollArea className="flex-1 -mr-4 pr-4">
         {activeSection === 'companyDetails' && renderCompanyDetails()}
+        {activeSection === 'invoiceMeta' && renderInvoiceMeta()}
+        {activeSection === 'customerDetails' && renderCustomerDetails()}
         {activeSection === 'table' && renderTable()}
+        {activeSection === 'summary' && renderSummary()}
         
-        {!['companyDetails', 'table'].includes(activeSection) && (
+        {!['companyDetails', 'invoiceMeta', 'table', 'customerDetails', 'summary'].includes(activeSection) && (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
                 <span className="text-2xl">🚧</span>

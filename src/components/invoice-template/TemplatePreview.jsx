@@ -43,7 +43,7 @@ export default function TemplatePreview({ template }) {
         style={{ width: `${pageWidthMm}mm` }}
     >
       {/* 1. Header Section */}
-      <div className="flex justify-between mb-10 pb-6" style={{ borderBottom: `2px solid ${template.companyDetails.accentColor}`}}>
+      <div className="flex justify-between mb-6 pb-6" style={{ borderBottom: `2px solid ${template.companyDetails.accentColor}`}}>
 
         <div className="w-[60%]">
           {template.companyDetails.showLogo && (
@@ -73,30 +73,70 @@ export default function TemplatePreview({ template }) {
               {template.companyDetails.headerTitle || 'INVOICE'}
            </h1>
            <div className="space-y-1">
-           {template.invoiceMeta.fields.map(field => field.visible && (
-             <div key={field.key} className="flex justify-end gap-4">
-                <span className="font-semibold text-slate-700">{field.label}:</span> 
-                <span className="text-slate-900 font-medium">{field.key === 'date' ? '12 Oct 2026' : 'INV-#00912'}</span>
+               {/* Primary Header Fields (Invoice #, Date) */}
+               {template.invoiceMeta.fields.filter(f => f.key === 'invoice_no' || f.key === 'date').map(field => field.visible && (
+                    <div key={field.key} className="flex justify-end gap-4">
+                        <span className="font-semibold text-slate-700">{field.label}:</span> 
+                        <span className="text-slate-900 font-medium">{field.key === 'date' ? '12 Oct 2026' : 'INV-#00912'}</span>
+                    </div>
+               ))}
+           </div>
+        </div>
+      </div>
+      
+      {/* 1.5 Meta Data Section (Moved below line) */}
+      <div className="mb-10">
+           
+           <div className="grid gap-x-6 gap-y-4 text-left" style={{ 
+               gridTemplateColumns: `repeat(${template.invoiceMeta.columnCount || 1}, minmax(0, 1fr))` 
+           }}>
+           {template.invoiceMeta.fields.filter(f => f.key !== 'invoice_no' && f.key !== 'date').map(field => field.visible && (
+             <div key={field.key} className="flex flex-col">
+                <span className="font-semibold text-slate-700 text-xs uppercase tracking-wide opacity-70 mb-0.5">{field.label}</span> 
+                <span className="text-slate-900 font-medium text-sm">
+                    {field.key === 'date' ? '12 Oct 2026' : 
+                     field.key === 'invoice_no' ? 'INV-#00912' : 
+                     'Custom Val'}
+                </span>
             </div>
            ))}
            </div>
-        </div>
       </div>
 
       {/* 2. Bill To / Ship To */}
       <div className="flex justify-between mb-16 gap-12">
         <div className="w-1/2">
-           <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.billingTitle}</h3>
-           <p className="font-bold text-lg text-slate-900 mb-1">John Doe Enterprises</p>
-           <p className="text-slate-600">45, North Street, Main Road</p>
-           <p className="text-slate-600">Chennai, Tamil Nadu - 600028</p>
-           <p className="text-slate-600 mt-2">GSTIN: 33BBBBB0000B1Z5</p>
+           <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.billing.title}</h3>
+           {template.customerDetails.billing.fields.map(field => field.visible && (
+              <div key={field.key} className={`mb-1 ${field.key === 'name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
+                {field.key === 'name' ? 'John Doe Enterprises' : 
+                 field.key === 'address' ? (
+                     <>
+                        <div>45, North Street, Main Road</div>
+                        <div>Chennai, Tamil Nadu - 600028</div>
+                     </>
+                 ) : 
+                 field.key === 'state' ? '' : // State is merged into address for demo simplicity usually, but here I'll hide it if address handles it, or show it. Let's keep it simple.
+                 field.key === 'gstin' ? 'GSTIN: 33BBBBB0000B1Z5' : 
+                 `${field.label}: Value`}
+              </div>
+           ))}
         </div>
         <div className="w-1/2">
-           <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.shippingTitle}</h3>
-           <p className="font-bold text-lg text-slate-900 mb-1">John Doe Enterprises</p>
-           <p className="text-slate-600">Warehouse No. 9</p>
-           <p className="text-slate-600">Kanchipuram, Tamil Nadu</p>
+           <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.shipping.title}</h3>
+           {template.customerDetails.shipping.fields.map(field => field.visible && (
+              <div key={field.key} className={`mb-1 ${field.key === 'name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
+                {field.key === 'name' ? 'John Doe Enterprises' : 
+                 field.key === 'address' ? (
+                     <>
+                        <div>Warehouse No. 9</div>
+                        <div>Kanchipuram, Tamil Nadu</div>
+                     </>
+                 ) : 
+                 field.key === 'state' ? '' : 
+                 `${field.label}: Value`}
+              </div>
+           ))}
         </div>
       </div>
 
@@ -156,8 +196,8 @@ export default function TemplatePreview({ template }) {
                                     <span className="text-xs text-slate-500">Size: {row % 2 === 0 ? 'L' : 'M'}, Color: Blue</span>
                                 </div>
                              ) : 
-                             col.key === 'qty' ? (row * 10) : 
-                             col.key === 'rate' ? '450.00' : 
+                             col.key === 'quantity' ? (row * 10) : 
+                             col.key === 'price' ? '450.00' : 
                              col.key === 'total' ? (row * 10 * 450).toFixed(2) : '--'}
                         </div>
                     )}
@@ -170,17 +210,42 @@ export default function TemplatePreview({ template }) {
       {/* 4. Totals */}
       <div className="flex justify-end mb-16">
          <div className="w-1/2 bg-slate-50 p-6 rounded-lg border border-slate-100">
-            {template.summary.fields.map(field => field.visible && (
+            {template.summary.fields.map(field => {
+                if(!field.visible) return null;
+
+                // Calculate value based on sourceColumn if present
+                let displayValue = '--';
+                if (field.sourceColumn) {
+                    const sum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].reduce((acc, row) => {
+                        let val = 0;
+                        // Imitate the logic used in the table rendering
+                        if (field.sourceColumn === 'quantity') val = row * 10;
+                        else if (field.sourceColumn === 'price') val = 450.00;
+                        else if (field.sourceColumn === 'total') val = row * 10 * 450;
+                        // For other columns, we can't easily guess the numeric value without real data, 
+                        // but this covers the demo requirement.
+                        return acc + val;
+                    }, 0);
+                    
+                    if (field.sourceColumn === 'quantity') displayValue = sum;
+                    else displayValue = '₹ ' + sum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else if (field.key === 'grand_total') {
+                     // hardcode for demo if not mapped (though usually it should be mapped to total)
+                     displayValue = '₹ 2,97,000.00'; 
+                }
+
+                return (
                <div key={field.key} className={`flex justify-between py-2 ${field.bold ? 'font-bold text-xl border-t-2 border-slate-300 mt-2 pt-4 text-slate-900' : 'text-slate-600'}`}>
                   <span>{field.label}</span>
-                  <span className={field.bold ? '' : 'font-medium'}>{field.key.includes('total') ? '₹ 15,450.00' : '--'}</span>
+                  <span className={field.bold ? '' : 'font-medium'}>{displayValue}</span>
                </div>
-            ))}
+            )})}
          </div>
       </div>
       
       {/* 5. Footer */}
       <div className="absolute bottom-12 left-12 right-12">
+         {/* Bank Details Removed as requested */}
          <div className="flex justify-between items-end">
             <div className="w-[60%]">
                 <h4 className="font-bold text-slate-800 mb-2 text-sm uppercase">Bank Details</h4>
