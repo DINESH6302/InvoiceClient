@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -604,62 +605,84 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     />
                 </div>
             </div>
+            <div className="mt-2 pl-8 flex gap-3">
+                <div className="space-y-1 flex-1">
+                    <Label className="text-[10px] text-muted-foreground">Group Name (Optional)</Label>
+                    <Input 
+                        value={col.group || ''} 
+                        onChange={e => handleColumnChange(idx, 'group', e.target.value)} 
+                        className="h-7 text-xs"
+                        placeholder="e.g. Tax Details"
+                    />
+                </div>
+                <div className="space-y-1 w-24">
+                    <Label className="text-[10px] text-muted-foreground">Data Type</Label>
+                    <select 
+                      value={col.type || ''} 
+                      onChange={e => handleColumnChange(idx, 'type', e.target.value)}
+                      className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="" disabled>Select Type</option>
+                      <option value="text">Text</option>
+                      <option value="number">Number</option>
+                    </select>
+                </div>
+            </div>
             
-            {/* Sub-columns Section (Only for Custom Columns) */}
-            {col.key.startsWith('col_') && (
-                <div className="mt-3 pt-3 border-t pl-8">
-                    <div className="flex items-center justify-between mb-2">
-                        <div 
-                            className="flex items-center gap-1 cursor-pointer hover:text-slate-700 group select-none"
-                            onClick={() => setExpandedSubCols(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                        >
-                            {expandedSubCols[col.key] ? 
-                                <ChevronDown className="w-3 h-3 text-muted-foreground group-hover:text-slate-700" /> : 
-                                <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-slate-700" />
-                            }
-                            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold cursor-pointer group-hover:text-slate-700">Sub-Columns</Label>
-                        </div>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-5 text-[10px] text-blue-600 hover:text-blue-700 px-2"
-                            onClick={() => {
-                                handleAddSubColumn(idx);
-                                if (!expandedSubCols[col.key]) {
-                                    setExpandedSubCols(prev => ({ ...prev, [col.key]: true }));
-                                }
-                            }}
-                        >
-                            <Plus className="w-3 h-3 mr-1" /> Add
-                        </Button>
-                    </div>
-                    {expandedSubCols[col.key] && (
-                        <div className="space-y-2">
-                            {col.subColumns?.map((sub, sIdx) => (
-                                <div key={sIdx} className="flex items-center gap-2">
-                                    <div className="w-4 border-l-2 border-b-2 border-slate-200 h-4 -mt-4 rounded-bl-sm"></div>
-                                    <Input 
-                                        value={sub.label} 
-                                        onChange={(e) => handleSubColumnChange(idx, sIdx, 'label', e.target.value)} 
-                                        className="h-6 text-xs flex-1"
-                                        placeholder="Sub Label"
-                                    />
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 text-red-400 hover:text-red-600"
-                                        onClick={() => handleRemoveSubColumn(idx, sIdx)}
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                </div>
-                            ))}
-                            {(!col.subColumns || col.subColumns.length === 0) && (
-                                <div className="text-[10px] text-muted-foreground italic pl-6">No sub-columns added</div>
+            {col.type === 'number' && (
+            <>
+            <div className="mt-2 pl-8 flex gap-3">
+                 <div className="space-y-1 flex-1">
+                    <Label className="text-[10px] text-muted-foreground">Formula (Optional)</Label>
+                    <select 
+                      value={col.formula || ''} 
+                      onChange={e => handleColumnChange(idx, 'formula', e.target.value)}
+                      className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">None</option>
+                      <option value="addition">Addition (+)</option>
+                      <option value="subtraction">Subtraction (-)</option>
+                      <option value="multiplication">Multiplication (*)</option>
+                      <option value="division">Division (/)</option>
+                    </select>
+                 </div>
+            </div>
+
+            {col.formula && (
+                <div className="mt-2 pl-8">
+                     <div className="p-3 bg-slate-50 rounded border text-xs">
+                        <Label className="mb-2 block font-semibold text-muted-foreground">Select Columns</Label>
+                        <div className="space-y-1.5">
+                            {template.table.columns.filter(c => c.type === 'number' && c.key !== col.key).length === 0 ? (
+                                <div className="text-slate-400 italic">No other number columns available.</div>
+                            ) : (
+                                template.table.columns.filter(c => c.type === 'number' && c.key !== col.key).map(numCol => (
+                                    <div key={numCol.key} className="flex items-center space-x-2">
+                                        <Checkbox 
+                                            id={`chk-${col.key}-${numCol.key}`}
+                                            checked={(col.formulaInputs || []).includes(numCol.key)}
+                                            onCheckedChange={(checked) => {
+                                                let current = col.formulaInputs || [];
+                                                let newInputs;
+                                                if(checked) {
+                                                    newInputs = [...current, numCol.key];
+                                                } else {
+                                                    newInputs = current.filter(k => k !== numCol.key);
+                                                }
+                                                handleColumnChange(idx, 'formulaInputs', newInputs);
+                                            }}
+                                        />
+                                        <label htmlFor={`chk-${col.key}-${numCol.key}`} className="cursor-pointer select-none font-medium text-slate-700">
+                                            {numCol.label || numCol.key}
+                                        </label>
+                                    </div>
+                                ))
                             )}
                         </div>
-                    )}
+                     </div>
                 </div>
+            )}
+            </>
             )}
            </>
            )}

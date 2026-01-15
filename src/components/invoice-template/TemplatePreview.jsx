@@ -171,53 +171,66 @@ export default function TemplatePreview({ template }) {
       {/* 3. Items Table */}
       <div className="mb-10 border border-slate-400 rounded-sm overflow-hidden">
         <div className="flex font-bold text-white text-xs uppercase tracking-wider items-stretch" style={{ backgroundColor: template.companyDetails.accentColor }}>
-           {template.table.columns.map((col, idx) => {
-             if (!col.visible) return null;
-             const hasSubs = col.subColumns && col.subColumns.length > 0;
-             return (
-             <div key={col.key} style={{ width: getColWidth(col.width), flexShrink: 0 }} className={`${idx === template.table.columns.length - 1 ? '' : 'border-r border-white/20'}`}>
-                {hasSubs ? (
-                    <div className="flex flex-col h-full">
-                        <div className="py-2 px-1 text-center border-b border-white/20 flex-1 flex items-center justify-center">
-                            {col.label}
-                        </div>
-                        <div className="flex h-full">
-                            {col.subColumns.map((sub, sIdx) => (
-                                <div key={sIdx} className="flex-1 py-1 px-1 text-center border-r border-white/20 last:border-none text-[10px] flex items-center justify-center">
-                                    {sub.label}
+           {(() => {
+              const visibleCols = template.table.columns.filter(c => c.visible);
+              const groups = [];
+              visibleCols.forEach((col) => {
+                  const last = groups[groups.length - 1];
+                  if (col.group && last && last.name === col.group) {
+                      last.cols.push(col);
+                  } else {
+                      groups.push({ name: col.group, cols: [col] });
+                  }
+              });
+
+              return groups.map((grp, gIdx) => {
+                  const isGrouped = !!grp.name;
+                  const groupWidth = grp.cols.reduce((acc, c) => acc + (parseFloat(c.width) || 0), 0);
+                  const isFirstGroup = gIdx === 0;
+                  const isLastGroup = gIdx === groups.length - 1;
+
+                  return (
+                      <div key={gIdx} style={{ width: getColWidth(groupWidth), flexShrink: 0 }} className={`flex flex-col ${isLastGroup ? '' : 'border-r border-white/20'}`}>
+                          {isGrouped ? (
+                              <>
+                                <div className="text-center py-1.5 border-b border-white/20 text-[10px] bg-white/10 px-1 truncate">
+                                    {grp.name}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className={`h-full py-3 px-2 flex items-center ${idx === 0 ? 'pl-4' : ''} ${idx === template.table.columns.length - 1 ? 'pr-4' : ''}`} style={{ justifyContent: col.align === 'center' ? 'center' : (col.align === 'right' ? 'flex-end' : 'flex-start') }}>
-                        {col.label}
-                    </div>
-                )}
-             </div>
-           )})}
+                                <div className="flex flex-1">
+                                    {grp.cols.map((col, cIdx) => (
+                                        <div key={col.key} style={{ width: getColWidth(col.width) }} className={`flex items-center justify-center ${cIdx === grp.cols.length - 1 ? '' : 'border-r border-white/20'}`}>
+                                            <div style={{ justifyContent: col.align === 'center' ? 'center' : (col.align === 'right' ? 'flex-end' : 'flex-start') }} className={`flex items-center w-full h-full px-2 py-1 ${isFirstGroup && cIdx === 0 ? 'pl-4' : ''} ${isLastGroup && cIdx === grp.cols.length - 1 ? 'pr-4' : ''}`}>
+                                                {col.label}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                              </>
+                          ) : (
+                              <div className="h-full flex flex-col justify-center">
+                                  {grp.cols.map((col) => (
+                                      <div key={col.key} style={{ justifyContent: col.align === 'center' ? 'center' : (col.align === 'right' ? 'flex-end' : 'flex-start') }} className={`h-full py-3 px-2 flex items-center ${isFirstGroup ? 'pl-4' : ''} ${isLastGroup ? 'pr-4' : ''}`}>
+                                          {col.label}
+                                      </div>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                  );
+              });
+           })()}
         </div>
         {/* Dummy Rows */}
         {PREVIEW_ROWS.map((row) => (
            <div key={row} className="flex border-b border-slate-400 last:border-b-0 text-slate-700 text-sm items-stretch">
               {template.table.columns.map((col, idx) => {
                  if (!col.visible) return null;
-                 const hasSubs = col.subColumns && col.subColumns.length > 0;
                  return (
                  <div key={col.key} style={{ width: getColWidth(col.width), flexShrink: 0 }} className={`${idx === template.table.columns.length - 1 ? '' : 'border-r border-slate-400'}`}>
-                    {hasSubs ? (
-                        <div className="flex h-full items-stretch">
-                            {col.subColumns.map((sub, sIdx) => (
-                                <div key={sIdx} className="flex-1 py-2 px-1 text-center border-r border-slate-400 last:border-none flex items-center justify-center">
-                                    <span className="text-xs text-slate-500 font-mono">--</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className={`py-4 px-2 h-full flex items-center ${col.align === 'right' ? 'justify-end' : (col.align === 'center' ? 'justify-center' : 'justify-start')} ${idx === 0 ? 'pl-4' : ''} ${idx === template.table.columns.length - 1 ? 'pr-4' : ''}`}>
-                            {col.key === 'sno' ? row : 
-                             col.key === 'description' ? (
-                                <div className="text-left w-full">
+                    <div className={`py-4 px-2 h-full flex items-center ${col.align === 'right' ? 'justify-end' : (col.align === 'center' ? 'justify-center' : 'justify-start')} ${idx === 0 ? 'pl-4' : ''} ${idx === template.table.columns.length - 1 ? 'pr-4' : ''}`}>
+                        {col.key === 'sno' ? row : 
+                         col.key === 'description' ? (
+                            <div className="text-left w-full">
                                     <span className="font-medium text-slate-900 block">Premium Cotton Shirt</span>
                                     <span className="text-xs text-slate-500">Size: {row % 2 === 0 ? 'L' : 'M'}, Color: Blue</span>
                                 </div>
@@ -226,7 +239,6 @@ export default function TemplatePreview({ template }) {
                              col.key === 'price' ? '450.00' : 
                              col.key === 'total' ? (row * 10 * 450).toFixed(2) : '--'}
                         </div>
-                    )}
                  </div>
               )})}
            </div>

@@ -1,9 +1,5 @@
-import InvoiceTemplateBuilder from "../components/invoice-template/InvoiceTemplateBuilder";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main className="min-h-screen">
-      <InvoiceTemplateBuilder />
-    </main>
-  );
+  redirect('/dashboard');
 }

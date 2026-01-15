@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, Save, X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import EditPanel from './EditPanel';
@@ -48,11 +49,11 @@ const initialTemplate = {
   table: {
     enableResize: true,
     columns: [
-      { key: "sno", label: "#", width: "10%", visible: true, align: "center" },
-      { key: "description", label: "Item & Description", width: "40%", visible: true, align: "left" },
-      { key: "quantity", label: "Qty", width: "15%", visible: true, align: "right" },
-      { key: "price", label: "price", width: "15%", visible: true, align: "right" },
-      { key: "total", label: "Amount", width: "20%", visible: true, align: "right" }
+      { key: "sno", label: "#", width: "10%", visible: true, align: "center", type: "number" },
+      { key: "description", label: "Item & Description", width: "40%", visible: true, align: "left", type: "text" },
+      { key: "quantity", label: "Qty", width: "15%", visible: true, align: "right", type: "number" },
+      { key: "price", label: "price", width: "15%", visible: true, align: "right", type: "number" },
+      { key: "total", label: "Amount", width: "20%", visible: true, align: "right", type: "number" }
     ]
   },
   summary: {
@@ -77,17 +78,17 @@ const initialTemplate = {
 };
 
 export default function InvoiceTemplateBuilder() {
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState('companyDetails');
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(true);
   const [template, setTemplate] = useState(initialTemplate);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background overflow-hidden text-foreground font-sans">
+    <div className="flex flex-col h-full w-full bg-background overflow-hidden text-foreground font-sans">
       {/* 0. Top Navigation Bar */}
       <div className="h-[58px] border-b bg-white flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-2 font-bold text-[17px] text-slate-800 tracking-tight">
-            <div className="w-[29px] h-[29px] bg-blue-600 rounded-md flex items-center justify-center text-white text-[11px] shadow-md shadow-blue-200">BZ</div>
-            BizBill
+             Edit Template
           </div>
           
           <div className="flex items-center gap-2.5">
@@ -95,7 +96,10 @@ export default function InvoiceTemplateBuilder() {
                 <Save size={15} />
                 Save Template
              </button>
-             <button className="flex items-center gap-1.5 px-[14px] py-[7px] text-[13px] font-medium text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm border border-red-100 hover:border-red-600">
+             <button 
+                onClick={() => router.push('/templates')}
+                className="flex items-center gap-1.5 px-[14px] py-[7px] text-[13px] font-medium text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-md transition-colors shadow-sm border border-red-100 hover:border-red-600"
+             >
                 <X size={16} />
                 Close
              </button>
