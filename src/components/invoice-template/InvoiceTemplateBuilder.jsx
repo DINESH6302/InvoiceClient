@@ -14,6 +14,8 @@ const initialTemplate = {
     headerFontSize: 60,
     headerOpacity: 0.1,
     fields: [ 
+      { key: "invoice_no", label: "Invoice #", visible: true },
+      { key: "date", label: "Date", visible: true },
       { key: "name", label: "Company Name", visible: true, bold: true },
       { key: "address", label: "Address", visible: true },
       { key: "gstin", label: "GSTIN", visible: true }
@@ -21,10 +23,7 @@ const initialTemplate = {
   },
   invoiceMeta: {
     columnCount: 1,
-    fields: [
-      { key: "invoice_no", label: "Invoice #", visible: true },
-      { key: "date", label: "Date", visible: true },
-    ]
+    fields: []
   },
   customerDetails: {
     layout: "side-by-side",
@@ -82,9 +81,61 @@ export default function InvoiceTemplateBuilder() {
   const [activeSection, setActiveSection] = useState('companyDetails');
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(true);
   const [template, setTemplate] = useState(initialTemplate);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   return (
-    <div className="flex flex-col h-full w-full bg-background overflow-hidden text-foreground font-sans">
+    <div className="flex flex-col h-full w-full bg-background overflow-hidden text-foreground font-sans relative">
+      {/* Save Modal Overlay */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 className="font-semibold text-slate-800">Save Template</h3>
+                    <button 
+                        onClick={() => setShowSaveModal(false)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Template Name</label>
+                        <input 
+                            type="text" 
+                            className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            placeholder="e.g. Standard Business Invoice"
+                            value={templateName}
+                            onChange={(e) => setTemplateName(e.target.value)}
+                            autoFocus
+                        />
+                        <p className="text-xs text-slate-500">Give your template a recognizable name.</p>
+                    </div>
+                </div>
+                <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+                    <button 
+                        onClick={() => setShowSaveModal(false)}
+                        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={() => {
+                            console.log('Saving template:', templateName, template);
+                            setShowSaveModal(false);
+                        }}
+                        disabled={!templateName.trim()}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <Save size={16} />
+                        Save Template
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
       {/* 0. Top Navigation Bar */}
       <div className="h-[58px] border-b bg-white flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-2 font-bold text-[17px] text-slate-800 tracking-tight">
@@ -92,7 +143,10 @@ export default function InvoiceTemplateBuilder() {
           </div>
           
           <div className="flex items-center gap-2.5">
-             <button className="flex items-center gap-1.5 px-[14px] py-[7px] text-[13px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-md transition-colors shadow-sm border border-blue-100 hover:border-blue-600">
+             <button 
+                onClick={() => setShowSaveModal(true)}
+                className="flex items-center gap-1.5 px-[14px] py-[7px] text-[13px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-md transition-colors shadow-sm border border-blue-100 hover:border-blue-600"
+             >
                 <Save size={15} />
                 Save Template
              </button>

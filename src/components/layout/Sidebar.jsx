@@ -47,14 +47,6 @@ export default function Sidebar() {
             </Link>
           );
         })}
-        
-         <button 
-           onClick={handleCreateOrg}
-           className="flex items-center gap-3 px-4 py-3 rounded-md transition-colors text-slate-400 hover:bg-slate-800 hover:text-white w-full text-left"
-         >
-            <PlusCircle size={20} />
-            <span className="font-medium">Create Org</span>
-         </button>
       </nav>
 
       <div className="p-4 border-t border-slate-800 text-center">

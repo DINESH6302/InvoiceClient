@@ -64,11 +64,14 @@ export default function TemplatePreview({ template }) {
 
   // Dynamic Grand Total Calculation (matches 'Total' column sum)
   const grandTotal = calculateColumnSum('total');
+  
+  const fontFamilyValue = template.companyDetails.fontFamily || 'Inter';
+  const bodyFontSize = (template.companyDetails.bodyFontSize || 14) + 'px';
 
   return (
     <div 
-        className="min-h-[297mm] bg-white shadow-sm p-12 text-sm relative text-black text-left border overflow-hidden flex flex-col"
-        style={{ width: `${pageWidthMm}mm` }}
+        className="min-h-[297mm] bg-white shadow-sm p-12 relative text-black text-left border overflow-hidden flex flex-col"
+        style={{ width: `${pageWidthMm}mm`, fontFamily: fontFamilyValue, fontSize: bodyFontSize }}
     >
       {/* 1. Header Section */}
       <div className="flex justify-between mb-6 pb-6" style={{ borderBottom: `2px solid ${template.companyDetails.accentColor}`}}>
@@ -82,7 +85,7 @@ export default function TemplatePreview({ template }) {
              )
           )}
           <div className="space-y-1">
-          {template.companyDetails.fields.map(field => field.visible && (
+          {template.companyDetails.fields.filter(f => f.key !== 'invoice_no' && f.key !== 'date').map(field => field.visible && (
              <div key={field.key} className={`${field.bold ? 'font-bold text-2xl text-slate-800 mb-2' : 'text-slate-600'}`}>
                {field.key === 'name' ? (field.label === 'Display Label' ? 'Acme Corp Private Ltd' : 'Acme Corp Private Ltd') : 
                 (field.key === 'address' ? '123 Business Park, Fifth Avenue' : 
@@ -102,7 +105,7 @@ export default function TemplatePreview({ template }) {
            </h1>
            <div className="space-y-1">
                {/* Primary Header Fields (Invoice #, Date) */}
-               {template.invoiceMeta.fields.filter(f => f.key === 'invoice_no' || f.key === 'date').map(field => field.visible && (
+               {template.companyDetails.fields.filter(f => f.key === 'invoice_no' || f.key === 'date').map(field => field.visible && (
                     <div key={field.key} className="flex justify-end gap-4">
                         <span className="font-semibold text-slate-700">{field.label}:</span> 
                         <span className="text-slate-900 font-medium">{field.key === 'date' ? '12 Oct 2026' : 'INV-#00912'}</span>

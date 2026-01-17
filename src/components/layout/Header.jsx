@@ -1,12 +1,27 @@
 'use client';
 
-import { User, ChevronDown } from 'lucide-react';
+import { User, ChevronDown, Plus } from 'lucide-react';
 import { useOrganization } from '@/context/OrganizationContext';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const { currentOrg, organizations, switchOrganization } = useOrganization();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const router = useRouter();
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 fixed top-0 right-0 left-56 z-10 shadow-sm">
@@ -16,7 +31,7 @@ export default function Header() {
 
       <div className="flex items-center gap-6">
         {/* Organization Switcher */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
              <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200"
@@ -39,6 +54,17 @@ export default function Header() {
                              {org.name}
                          </button>
                      ))}
+                     <div className="border-t border-slate-100 my-1"></div>
+                     <button
+                         onClick={() => {
+                             router.push('/organizations/new');
+                             setIsDropdownOpen(false);
+                         }}
+                         className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-slate-50 flex items-center gap-2"
+                     >
+                         <Plus size={14} />
+                        New Organization
+                     </button>
                  </div>
              )}
         </div>

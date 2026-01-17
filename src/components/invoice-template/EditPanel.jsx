@@ -293,6 +293,47 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
     <div className="space-y-6">
        <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
           
+          <div className="space-y-2 pb-4 border-b">
+             <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                     <Label className="text-base">Font Family</Label>
+                     <select 
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={template.companyDetails.fontFamily || 'Inter'}
+                        onChange={e => {
+                            const newT = {...template};
+                            newT.companyDetails.fontFamily = e.target.value;
+                            setTemplate(newT);
+                        }}
+                     >
+                        <option value="Inter">Inter</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                     </select>
+                 </div>
+                 <div className="space-y-2">
+                     <Label className="text-base">Font Size</Label>
+                     <div className="flex items-center gap-2">
+                        <Input 
+                            type="number"
+                            min="10"
+                            max="24"
+                            value={template.companyDetails.bodyFontSize || 14} 
+                            onChange={e => {
+                                const newT = {...template};
+                                newT.companyDetails.bodyFontSize = parseInt(e.target.value) || 14;
+                                setTemplate(newT);
+                            }}
+                        />
+                        <span className="text-xs text-muted-foreground">px</span>
+                     </div>
+                 </div>
+             </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4 items-end">
              {/* Part 1: Logo Import */}
              <div className="space-y-2">
@@ -396,56 +437,24 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
             </div>
           </div>
           
-          <div className="pt-4 border-t space-y-4">
-            <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Standard Fields</Label>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label className="text-xs">Invoice # Label</Label>
-                    <Input 
-                        value={template.invoiceMeta.fields.find(f => f.key === 'invoice_no')?.label || 'Invoice #'} 
-                        onChange={e => {
-                            const newT = {...template};
-                            const idx = newT.invoiceMeta.fields.findIndex(f => f.key === 'invoice_no');
-                            if(idx > -1) newT.invoiceMeta.fields[idx].label = e.target.value;
-                            setTemplate(newT);
-                        }}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-xs">Date Label</Label>
-                    <Input 
-                        value={template.invoiceMeta.fields.find(f => f.key === 'date')?.label || 'Date'} 
-                        onChange={e => {
-                            const newT = {...template};
-                            const idx = newT.invoiceMeta.fields.findIndex(f => f.key === 'date');
-                            if(idx > -1) newT.invoiceMeta.fields[idx].label = e.target.value;
-                            setTemplate(newT);
-                        }}
-                    />
-                </div>
-            </div>
-          </div>
-          
-          <div className="pt-2 border-t">
-            <div className="space-y-2">
-                <div className="flex justify-between">
-                    <Label className="text-sm font-semibold">Text Opacity</Label>
-                    <span className="text-xs text-muted-foreground">{Math.round((template.companyDetails.headerOpacity || 0.1) * 100)}%</span>
-                </div>
-                <input 
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    value={template.companyDetails.headerOpacity || 0.1} 
-                    onChange={e => {
-                        const newT = {...template};
-                        newT.companyDetails.headerOpacity = parseFloat(e.target.value);
-                        setTemplate(newT);
-                    }}
-                />
-            </div>
+          <div className="pt-0">
+             <div className="flex justify-between mb-1">
+                <Label className="text-[10px] text-muted-foreground">Opacity</Label>
+                <span className="text-[10px] text-muted-foreground">{Math.round((template.companyDetails.headerOpacity || 0.1) * 100)}%</span>
+             </div>
+             <input 
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                value={template.companyDetails.headerOpacity || 0.1} 
+                onChange={e => {
+                    const newT = {...template};
+                    newT.companyDetails.headerOpacity = parseFloat(e.target.value);
+                    setTemplate(newT);
+                }}
+             />
           </div>
        </div>
 
@@ -483,7 +492,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                  <div className="flex-1 space-y-2">
                      <div className="flex items-center justify-between">
                         <Label className="font-semibold text-gray-700 capitalize text-sm">
-                            {idx < 3 ? field.key.replace(/_/g, ' ') : (
+                            {(field.key === 'name' || field.key === 'address' || field.key === 'gstin' || field.key === 'invoice_no' || field.key === 'date') ? field.key.replace(/_/g, ' ') : (
                                 <Input 
                                     value={field.key} 
                                     className="h-6 text-xs w-32 border-none p-0 focus-visible:ring-0 font-semibold"
@@ -492,7 +501,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                             )}
                         </Label>
                         <div className="flex items-center gap-2">
-                             {idx > 2 && ( // Only allow deleting custom fields (assuming first 3 are standard)
+                             {(field.key !== 'name' && field.key !== 'address' && field.key !== 'gstin' && field.key !== 'invoice_no' && field.key !== 'date') && ( 
                                 <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -523,6 +532,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
              </DndContext>
            </div>
        </div>
+
     </div>
   );
 
