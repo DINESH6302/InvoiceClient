@@ -1164,40 +1164,37 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                             <GripVertical className="w-4 h-4 text-gray-300 cursor-move mt-2 outline-none" />
                          </div>
                          <div className="flex-1 space-y-2">
-                             <div className="flex items-center justify-between gap-2">
+                             <div className="flex items-center justify-between">
+                                <Label className="font-semibold text-gray-700 capitalize text-sm">
+                                    {/* Display Key/ID in Header, similar to Company Details */}
+                                   {field.key.startsWith('custom_') ? 'Custom Field' : field.key.replace(/_/g, ' ')}
+                                </Label>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                                        onClick={() => {
+                                            const newT = {...template};
+                                            newT.footer.bankDetails.fields.splice(idx, 1);
+                                            setTemplate(newT);
+                                        }}
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                </div>
+                             </div>
+                             
+                             <div className="pt-1">
                                 <Input 
                                     value={field.label} 
                                     onChange={(e) => {
                                         const newT = {...template};
                                         newT.footer.bankDetails.fields[idx].label = e.target.value;
                                         setTemplate(newT);
-                                    }}
-                                    className="h-7 text-xs font-semibold"
-                                    placeholder="Label"
-                                />
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0"
-                                    onClick={() => {
-                                        const newT = {...template};
-                                        newT.footer.bankDetails.fields.splice(idx, 1);
-                                        setTemplate(newT);
-                                    }}
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </Button>
-                             </div>
-                             <div>
-                                <Input 
-                                    value={field.value} 
-                                    onChange={(e) => {
-                                        const newT = {...template};
-                                        newT.footer.bankDetails.fields[idx].value = e.target.value;
-                                        setTemplate(newT);
                                     }} 
                                     className="h-7 text-xs"
-                                    placeholder="Value"
+                                    placeholder="Display Label (e.g. Bank Name)"
                                 />
                             </div>
                          </div>
