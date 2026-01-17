@@ -570,7 +570,9 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                 >
                     {idx + 1}
                 </div>
-                <div className="flex-1 font-medium text-sm">{col.key.toUpperCase()}</div>
+                <div className="flex-1 font-medium text-sm flex items-center gap-2">
+                    {col.key.toUpperCase()}
+                </div>
                 <div className="flex items-center gap-1">
                     {idx > 4 && ( // Assuming first 5 are standard
                         <Button 
@@ -635,65 +637,110 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                       <option value="" disabled>Select Type</option>
                       <option value="text">Text</option>
                       <option value="number">Number</option>
+                      <option value="formula">Formula (f(x))</option>
                     </select>
                 </div>
             </div>
             
-            {col.type === 'number' && (
-            <>
-            <div className="mt-2 pl-8 flex gap-3">
-                 <div className="space-y-1 flex-1">
-                    <Label className="text-[10px] text-muted-foreground">Formula (Optional)</Label>
-                    <select 
-                      value={col.formula || ''} 
-                      onChange={e => handleColumnChange(idx, 'formula', e.target.value)}
-                      className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">None</option>
-                      <option value="addition">Addition (+)</option>
-                      <option value="subtraction">Subtraction (-)</option>
-                      <option value="multiplication">Multiplication (*)</option>
-                      <option value="division">Division (/)</option>
-                    </select>
-                 </div>
-            </div>
+            {col.type === 'formula' && (
+            <div className="mt-3 pl-8">
+               <div className="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-3">
+                  <div className="flex justify-between items-center">
+                      <Label className="text-xs font-semibold text-slate-700">Formula Expression</Label>
+                  </div>
+                  
+                  <div className="relative">
+                      <Input 
+                        value={col.formula || ''}
+                        onChange={(e) => {
+                            handleColumnChange(idx, 'formula', e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                           if (e.key === 'Backspace') {
+                               const cursor = e.currentTarget.selectionStart;
+                               const selectionEnd = e.currentTarget.selectionEnd;
+                               
+                               // Only activate smart delete if no text is selected (cursor is a single line)
+                               if (cursor === selectionEnd && cursor > 0) {
+                                   const val = col.formula || '';
+                                   // Check if the character being deleted is a closing bracket ']'
+                                   if (val[cursor - 1] === ']') {
+                                       // Find the corresponding opening bracket backwords
+                                       const openBracket = val.lastIndexOf('[', cursor - 1);
+                                       if (openBracket !== -1) {
+                                            // Ensure there are no other closing brackets in between (to prevent deleting multiple tokens)
+                                            const tokenContent = val.slice(openBracket, cursor);
+                                            // tokenContent is something like "[Qty]"
+                                            if (tokenContent.indexOf(']') === tokenContent.length - 1) {
+                                                e.preventDefault();
+                                                const newVal = val.slice(0, openBracket) + val.slice(cursor);
+                                                handleColumnChange(idx, 'formula', newVal);
+                                                
+                                                // Adjust cursor position after update
+                                                const target = e.target;
+                                                requestAnimationFrame(() => {
+                                                    target.setSelectionRange(openBracket, openBracket);
+                                                    target.focus();
+                                                });
+                                            }
+                                       }
+                                   }
+                               }
+                           }
+                        }}
+                        placeholder="( [Qty] * [Price] ) / 100"
+                        className="font-mono text-sm tracking-wide bg-white"
+                      />
+                      {/* Simple Validator Feedback */}
+                      {col.formula && (() => {
+                          // Extract variables (Everything in [ ])
+                          const matches = col.formula.match(/\[(.*?)\]/g) || [];
+                          const vars = matches.map(m => m.slice(1, -1)); // Remove brackets
+                          
+                          // Check if variables exist in table by Label
+                          const invalidVars = vars.filter(vLabel => {
+                              return !template.table.columns.some(c => c.label === vLabel);
+                          });
+                          
+                          if (invalidVars.length > 0) {
+                              return <p className="text-[10px] text-red-500 mt-1 font-medium">Unknown columns: {invalidVars.join(', ')}</p>;
+                          }
+                          return <p className="text-[10px] text-green-600 mt-1 font-medium flex items-center gap-1">✓ Valid Expression</p>;
+                      })()}
+                  </div>
 
-            {col.formula && (
-                <div className="mt-2 pl-8">
-                     <div className="p-3 bg-slate-50 rounded border text-xs">
-                        <Label className="mb-2 block font-semibold text-muted-foreground">Select Columns</Label>
-                        <div className="space-y-1.5">
-                            {template.table.columns.filter(c => c.type === 'number' && c.key !== col.key).length === 0 ? (
-                                <div className="text-slate-400 italic">No other number columns available.</div>
-                            ) : (
-                                template.table.columns.filter(c => c.type === 'number' && c.key !== col.key).map(numCol => (
-                                    <div key={numCol.key} className="flex items-center space-x-2">
-                                        <Checkbox 
-                                            id={`chk-${col.key}-${numCol.key}`}
-                                            checked={(col.formulaInputs || []).includes(numCol.key)}
-                                            onCheckedChange={(checked) => {
-                                                let current = col.formulaInputs || [];
-                                                let newInputs;
-                                                if(checked) {
-                                                    newInputs = [...current, numCol.key];
-                                                } else {
-                                                    newInputs = current.filter(k => k !== numCol.key);
-                                                }
-                                                handleColumnChange(idx, 'formulaInputs', newInputs);
-                                            }}
-                                        />
-                                        <label htmlFor={`chk-${col.key}-${numCol.key}`} className="cursor-pointer select-none font-medium text-slate-700">
-                                            {numCol.label || numCol.key}
-                                        </label>
-                                    </div>
-                                ))
-                            )}
-                        </div>
+                  <div>
+                     <Label className="text-[10px] text-muted-foreground mb-1.5 block">Available Columns</Label>
+                     <div className="flex flex-wrap gap-2">
+                        {template.table.columns.map((rCol, rIdx) => {
+                            if(rIdx === idx) return null; // Don't show self
+                            // Filter: Only show Number or Formula columns
+                            if (rCol.type !== 'number' && rCol.type !== 'formula') return null;
+
+                            const labelName = rCol.label || rCol.key;
+                            return (
+                                <button
+                                    key={rCol.key}
+                                    onClick={() => {
+                                        const current = col.formula || '';
+                                        // Add space if needed?
+                                        handleColumnChange(idx, 'formula', current + `[${labelName}]`);
+                                    }}
+                                    className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded text-[10px] hover:border-blue-400 hover:text-blue-600 transition-colors shadow-sm"
+                                    title={`Insert [${labelName}]`}
+                                >
+                                    <span className="font-bold text-slate-700 bg-slate-100 px-1 rounded-sm flex items-center justify-center">[{labelName}]</span>
+                                </button>
+                            );
+                        })}
                      </div>
-                </div>
+                  </div>
+               </div>
+            </div>
             )}
-            </>
-            )}
+            
+            {/* Legacy Number specific options removed */}
+
            </>
            )}
            </SortableRow>

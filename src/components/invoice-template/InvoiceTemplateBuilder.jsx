@@ -14,7 +14,7 @@ const initialTemplate = {
     headerFontSize: 60,
     headerOpacity: 0.1,
     fields: [ 
-      { key: "invoice_no", label: "Invoice #", visible: true },
+      { key: "invoice_no", label: "Invoice No", visible: true },
       { key: "date", label: "Date", visible: true },
       { key: "name", label: "Company Name", visible: true, bold: true },
       { key: "address", label: "Address", visible: true },
@@ -48,7 +48,7 @@ const initialTemplate = {
   table: {
     enableResize: true,
     columns: [
-      { key: "sno", label: "#", width: "10%", visible: true, align: "center", type: "number" },
+      { key: "sno", label: "S.No", width: "10%", visible: true, align: "center", type: "text" },
       { key: "description", label: "Item & Description", width: "40%", visible: true, align: "left", type: "text" },
       { key: "quantity", label: "Qty", width: "15%", visible: true, align: "right", type: "number" },
       { key: "price", label: "price", width: "15%", visible: true, align: "right", type: "number" },

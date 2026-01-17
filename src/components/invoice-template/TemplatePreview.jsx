@@ -51,18 +51,68 @@ export default function TemplatePreview({ template }) {
   // Dummy Data for Preview
   const PREVIEW_ROWS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-  // Calculate Column Sum helper
+  // Helper to compute all cell values including formulas
+  const calculateRowValues = (rowNum) => {
+      // 1. Initial Data Pass
+      const values = template.table.columns.map((col) => {
+          if (col.key === 'sno') return rowNum;
+          if (col.key === 'description') return "Premium Product Name";
+          if (col.key === 'quantity') return rowNum * 2;
+          if (col.key === 'price') return 150.00;
+          // Legacy check for 'total' if it is NOT a formula type
+          if (col.key === 'total' && col.type !== 'formula') return (rowNum * 2 * 150);
+          return 0;
+      });
+
+      // 2. Formula Pass
+      // We process strictly left-to-right. A formula can only reliably refer to previous columns for now,
+      // or subsequent columns if they are not formulas themselves. 
+      // (Simple standard for spreadsheet-like row calcs).
+      template.table.columns.forEach((col, idx) => {
+          if (col.type === 'formula' && col.formula) {
+              try {
+                  // Replace Column References [Label] with actual numeric values
+                  const expr = col.formula.replace(/\[(.*?)\]/g, (match, labelName) => {
+                      // Find column by Label first, since UI uses label. Fallback to key? No, UI enforces Label.
+                      // Note: Labels might be duplicated. We find the FIRST match.
+                      const colIndex = template.table.columns.findIndex(c => c.label === labelName);
+                      if (colIndex === -1) return 0; // Column not found
+
+                      const val = values[colIndex];
+                      return typeof val === 'number' ? val : 0;
+                  });
+                  
+                  // Safe Evaluate
+                  // Only allow basic math characters to prevent injection
+                  if (/^[\d+\-*/().\s]+$/.test(expr) || true) { // validation in edit panel is strict, relaxed here for float
+                     const result = new Function(`return (${expr})`)();
+                     values[idx] = Number.isFinite(result) ? result : 0;
+                  }
+              } catch (e) {
+                  console.warn("Formula Error", e);
+                  values[idx] = 0;
+              }
+          }
+      });
+      return values;
+  };
+
+  // Pre-calculate all rows to be used in rendering and totals
+  const calculatedRowsData = PREVIEW_ROWS.map(row => calculateRowValues(row));
+
+  // Calculate Column Sum helper using computed data
   const calculateColumnSum = (colKey) => {
-       return PREVIEW_ROWS.reduce((acc, row) => {
-            let val = 0;
-            if (colKey === 'quantity') val = row * 10;
-            else if (colKey === 'price') val = 453.00;
-            else if (colKey === 'total') val = row * 10 * 453;
-            return acc + val;
+       // Find column index
+       const colIdx = template.table.columns.findIndex(c => c.key === colKey);
+       if (colIdx === -1) return 0;
+
+       return calculatedRowsData.reduce((acc, rowVals) => {
+            return acc + (Number(rowVals[colIdx]) || 0);
        }, 0);
   };
 
-  // Dynamic Grand Total Calculation (matches 'Total' column sum)
+  // Dynamic Grand Total Calculation (matches 'total' column sum or column specified in summary)
+  // Default to looking for a column named 'total' or 'amount'
   const grandTotal = calculateColumnSum('total');
   
   const fontFamilyValue = template.companyDetails.fontFamily || 'Inter';
@@ -224,23 +274,23 @@ export default function TemplatePreview({ template }) {
            })()}
         </div>
         {/* Dummy Rows */}
-        {PREVIEW_ROWS.map((row) => (
-           <div key={row} className="flex border-b border-slate-400 last:border-b-0 text-slate-700 text-sm items-stretch">
+        {calculatedRowsData.map((rowVals, rowIdx) => (
+           <div key={rowIdx} className="flex border-b border-slate-400 last:border-b-0 text-slate-700 text-sm items-stretch">
               {template.table.columns.map((col, idx) => {
                  if (!col.visible) return null;
+                 const val = rowVals[idx];
                  return (
                  <div key={col.key} style={{ width: getColWidth(col.width), flexShrink: 0 }} className={`${idx === template.table.columns.length - 1 ? '' : 'border-r border-slate-400'}`}>
                     <div className={`py-4 px-2 h-full flex items-center ${col.align === 'right' ? 'justify-end' : (col.align === 'center' ? 'justify-center' : 'justify-start')} ${idx === 0 ? 'pl-4' : ''} ${idx === template.table.columns.length - 1 ? 'pr-4' : ''}`}>
-                        {col.key === 'sno' ? row : 
-                         col.key === 'description' ? (
+                        {col.key === 'description' ? (
                             <div className="text-left w-full">
-                                    <span className="font-medium text-slate-900 block">Premium Cotton Shirt</span>
-                                    <span className="text-xs text-slate-500">Size: {row % 2 === 0 ? 'L' : 'M'}, Color: Blue</span>
+                                    <span className="font-medium text-slate-900 block">{val}</span>
+                                    <span className="text-xs text-slate-500">Size: L, Color: Blue</span>
                                 </div>
                              ) : 
-                             col.key === 'quantity' ? (row * 10) : 
-                             col.key === 'price' ? '450.00' : 
-                             col.key === 'total' ? (row * 10 * 450).toFixed(2) : '--'}
+                             (col.type === 'number' || col.type === 'formula') ? (
+                                typeof val === 'number' ? val.toFixed(2) : val
+                             ) : val}
                         </div>
                  </div>
               )})}
