@@ -115,8 +115,14 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
 
   const handleAddField = (section) => {
     const newTemplate = JSON.parse(JSON.stringify(template));
+    
+    // Determine prefix based on section
+    let prefix = 'custom_';
+    if(section === 'invoiceMeta') prefix = 'meta_';
+    if(section === 'companyDetails') prefix = 'header_';
+
     const newField = { 
-        key: `custom_${Date.now()}`, 
+        key: `${prefix}${Date.now()}`, 
         label: "New Field", 
         visible: true 
     };
@@ -137,7 +143,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
   const handleAddColumn = () => {
     const newTemplate = JSON.parse(JSON.stringify(template));
     newTemplate.table.columns.push({
-        key: `col_${Date.now()}`,
+        key: `item_${Date.now()}`,
         label: "New Column",
         width: "10%",
         visible: true,
@@ -319,12 +325,29 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                      <div className="flex items-center gap-2">
                         <Input 
                             type="number"
-                            min="10"
-                            max="24"
-                            value={template.companyDetails.bodyFontSize || 14} 
+                            min="14"
+                            max="30"
+                            value={template.companyDetails.bodyFontSize === '' ? '' : (template.companyDetails.bodyFontSize || 14)} 
                             onChange={e => {
+                                const val = e.target.value;
+                                if (val === '') {
+                                    const newT = {...template};
+                                    newT.companyDetails.bodyFontSize = '';
+                                    setTemplate(newT);
+                                    return;
+                                }
+                                let num = parseInt(val);
+                                if (num > 30) num = 30;
                                 const newT = {...template};
-                                newT.companyDetails.bodyFontSize = parseInt(e.target.value) || 14;
+                                newT.companyDetails.bodyFontSize = num;
+                                setTemplate(newT);
+                            }}
+                            onBlur={e => {
+                                let val = parseInt(e.target.value);
+                                if (isNaN(val) || val < 14) val = 14;
+                                if (val > 30) val = 30;
+                                const newT = {...template};
+                                newT.companyDetails.bodyFontSize = val;
                                 setTemplate(newT);
                             }}
                         />
@@ -424,11 +447,28 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     <Input 
                         type="number"
                         min="20"
-                        max="100"
-                        value={template.companyDetails.headerFontSize || 60} 
+                        max="70"
+                        value={template.companyDetails.headerFontSize === '' ? '' : (template.companyDetails.headerFontSize || 60)} 
                         onChange={e => {
+                            const val = e.target.value;
+                            if (val === '') {
+                                const newT = {...template};
+                                newT.companyDetails.headerFontSize = '';
+                                setTemplate(newT);
+                                return;
+                            }
+                            let num = parseInt(val);
+                            if (num > 70) num = 70;
                             const newT = {...template};
-                            newT.companyDetails.headerFontSize = parseInt(e.target.value) || 60;
+                            newT.companyDetails.headerFontSize = num;
+                            setTemplate(newT);
+                        }}
+                        onBlur={e => {
+                            let val = parseInt(e.target.value);
+                            if (isNaN(val) || val < 20) val = 20;
+                            if (val > 70) val = 70;
+                            const newT = {...template};
+                            newT.companyDetails.headerFontSize = val;
                             setTemplate(newT);
                         }}
                     />
@@ -778,7 +818,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                  <Button 
                     onClick={() => {
                         const newT = {...template};
-                        newT.customerDetails.billing.fields.push({ key: `custom_${Date.now()}`, label: "New Field", visible: true });
+                        newT.customerDetails.billing.fields.push({ key: `bill_to_${Date.now()}`, label: "New Field", visible: true });
                         setTemplate(newT);
                     }}
                     size="sm" 
@@ -884,7 +924,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                  <Button 
                     onClick={() => {
                         const newT = {...template};
-                        newT.customerDetails.shipping.fields.push({ key: `custom_${Date.now()}`, label: "New Field", visible: true });
+                        newT.customerDetails.shipping.fields.push({ key: `ship_to_${Date.now()}`, label: "New Field", visible: true });
                         setTemplate(newT);
                     }}
                     size="sm" 
@@ -976,7 +1016,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
              <Button 
                 onClick={() => {
                     const newT = {...template};
-                    newT.summary.fields.push({ key: `custom_${Date.now()}`, label: "Total Qty", visible: true, type: "manual" });
+                    newT.summary.fields.push({ key: `total_${Date.now()}`, label: "Total Qty", visible: true, type: "manual" });
                     setTemplate(newT);
                 }}
                 size="sm" 
@@ -1134,7 +1174,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         onClick={() => {
                             const newT = {...template};
                             if (!newT.footer.bankDetails.fields) newT.footer.bankDetails.fields = [];
-                            newT.footer.bankDetails.fields.push({ key: `custom_${Date.now()}`, label: "Label", value: "Value", visible: true });
+                            newT.footer.bankDetails.fields.push({ key: `footer_${Date.now()}`, label: "Label", value: "Value", visible: true });
                             setTemplate(newT);
                         }}
                         size="sm" 

@@ -55,12 +55,11 @@ export default function TemplatePreview({ template }) {
   const calculateRowValues = (rowNum) => {
       // 1. Initial Data Pass
       const values = template.table.columns.map((col) => {
-          if (col.key === 'sno') return rowNum;
-          if (col.key === 'description') return "Premium Product Name";
-          if (col.key === 'quantity') return rowNum * 2;
-          if (col.key === 'price') return 150.00;
-          // Legacy check for 'total' if it is NOT a formula type
-          if (col.key === 'total' && col.type !== 'formula') return (rowNum * 2 * 150);
+          if (col.label === 'S.No') return rowNum;
+          if (col.label === 'Item & Description') return "Premium Product Name";
+          if (col.label === 'Qty') return rowNum * 2;
+          if (col.label === 'price') return 150.00; // Note: 'price' is lower case in init
+          
           return 0;
       });
 
@@ -135,12 +134,12 @@ export default function TemplatePreview({ template }) {
              )
           )}
           <div className="space-y-1">
-          {template.companyDetails.fields.filter(f => f.key !== 'invoice_no' && f.key !== 'date').map(field => field.visible && (
+          {template.companyDetails.fields.filter(f => !f.key.includes('header_') || (f.label !== 'Invoice No' && f.label !== 'Date')).map(field => field.visible && (
              <div key={field.key} className={`${field.bold ? 'font-bold text-2xl text-slate-800 mb-2' : 'text-slate-600'}`}>
-               {field.key === 'name' ? (field.label === 'Display Label' ? 'Acme Corp Private Ltd' : 'Acme Corp Private Ltd') : 
-                (field.key === 'address' ? '123 Business Park, Fifth Avenue' : 
-                (field.key === 'gstin' ? 'GSTIN: 33AAAAA0000A1Z5' : 
-                (field.key.startsWith('custom') ? `${field.label}: Custom Value` : 'Details')))}
+               {field.label === 'Company Name' ? (field.label === 'Display Label' ? 'Acme Corp Private Ltd' : 'Acme Corp Private Ltd') : 
+                (field.label === 'Address' ? '123 Business Park, Fifth Avenue' : 
+                (field.label === 'GSTIN' ? 'GSTIN: 33AAAAA0000A1Z5' : 
+                (field.key.startsWith('custom') || field.key.startsWith('header') ? `${field.label}: Custom Value` : 'Details')))}
              </div>
           ))}
           </div>
@@ -154,11 +153,11 @@ export default function TemplatePreview({ template }) {
               {template.companyDetails.headerTitle || 'INVOICE'}
            </h1>
            <div className="space-y-1">
-               {/* Primary Header Fields (Invoice #, Date) */}
-               {template.companyDetails.fields.filter(f => f.key === 'invoice_no' || f.key === 'date').map(field => field.visible && (
+               {/* Primary Header Fields (Invoice #, Date/TimeStamps in 173... range) */}
+               {template.companyDetails.fields.filter(f => f.key.includes('header_') && (f.label === 'Invoice No' || f.label === 'Date')).map(field => field.visible && (
                     <div key={field.key} className="flex justify-end gap-4">
                         <span className="font-semibold text-slate-700">{field.label}:</span> 
-                        <span className="text-slate-900 font-medium">{field.key === 'date' ? '12 Oct 2026' : 'INV-#00912'}</span>
+                        <span className="text-slate-900 font-medium">{field.label === 'Date' ? '12 Oct 2026' : 'INV-#00912'}</span>
                     </div>
                ))}
            </div>
@@ -171,13 +170,11 @@ export default function TemplatePreview({ template }) {
            <div className="grid gap-x-6 gap-y-4 text-left" style={{ 
                gridTemplateColumns: `repeat(${template.invoiceMeta.columnCount || 1}, minmax(0, 1fr))` 
            }}>
-           {template.invoiceMeta.fields.filter(f => f.key !== 'invoice_no' && f.key !== 'date').map(field => field.visible && (
+           {template.invoiceMeta.fields.map(field => field.visible && (
              <div key={field.key} className="flex flex-col">
                 <span className="font-semibold text-slate-700 text-xs uppercase tracking-wide opacity-70 mb-0.5">{field.label}</span> 
                 <span className="text-slate-900 font-medium text-sm">
-                    {field.key === 'date' ? '12 Oct 2026' : 
-                     field.key === 'invoice_no' ? 'INV-#00912' : 
-                     'Custom Val'}
+                     'Custom Val'
                 </span>
             </div>
            ))}
@@ -189,16 +186,16 @@ export default function TemplatePreview({ template }) {
         <div className="w-1/2">
            <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.billing.title}</h3>
            {template.customerDetails.billing.fields.map(field => field.visible && (
-              <div key={field.key} className={`mb-1 ${field.key === 'name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
-                {field.key === 'name' ? 'John Doe Enterprises' : 
-                 field.key === 'address' ? (
+              <div key={field.key} className={`mb-1 ${field.label === 'Name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
+                {field.label === 'Name' ? 'John Doe Enterprises' : 
+                 field.label === 'Address' ? (
                      <>
                         <div>45, North Street, Main Road</div>
                         <div>Chennai, Tamil Nadu - 600028</div>
                      </>
                  ) : 
-                 field.key === 'state' ? '' : // State is merged into address for demo simplicity usually, but here I'll hide it if address handles it, or show it. Let's keep it simple.
-                 field.key === 'gstin' ? 'GSTIN: 33BBBBB0000B1Z5' : 
+                 field.label === 'State' ? '' : // State is merged into address for demo simplicity usually, but here I'll hide it if address handles it, or show it. Let's keep it simple.
+                 field.label === 'GSTIN' ? 'GSTIN: 33BBBBB0000B1Z5' : 
                  `${field.label}: Value`}
               </div>
            ))}
@@ -206,15 +203,15 @@ export default function TemplatePreview({ template }) {
         <div className="w-1/2">
            <h3 className="font-bold text-slate-800 mb-3 border-b pb-1 text-sm uppercase tracking-wide" style={{ borderColor: template.companyDetails.accentColor }}>{template.customerDetails.shipping.title}</h3>
            {template.customerDetails.shipping.fields.map(field => field.visible && (
-              <div key={field.key} className={`mb-1 ${field.key === 'name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
-                {field.key === 'name' ? 'John Doe Enterprises' : 
-                 field.key === 'address' ? (
+              <div key={field.key} className={`mb-1 ${field.label === 'Name' ? 'font-bold text-lg text-slate-900' : 'text-slate-600'}`}>
+                {field.label === 'Name' ? 'John Doe Enterprises' : 
+                 field.label === 'Address' ? (
                      <>
                         <div>Warehouse No. 9</div>
                         <div>Kanchipuram, Tamil Nadu</div>
                      </>
                  ) : 
-                 field.key === 'state' ? '' : 
+                 field.label === 'State' ? '' : 
                  `${field.label}: Value`}
               </div>
            ))}
@@ -282,7 +279,7 @@ export default function TemplatePreview({ template }) {
                  return (
                  <div key={col.key} style={{ width: getColWidth(col.width), flexShrink: 0 }} className={`${idx === template.table.columns.length - 1 ? '' : 'border-r border-slate-400'}`}>
                     <div className={`py-4 px-2 h-full flex items-center ${col.align === 'right' ? 'justify-end' : (col.align === 'center' ? 'justify-center' : 'justify-start')} ${idx === 0 ? 'pl-4' : ''} ${idx === template.table.columns.length - 1 ? 'pr-4' : ''}`}>
-                        {col.key === 'description' ? (
+                        {col.label === 'Item & Description' ? (
                             <div className="text-left w-full">
                                     <span className="font-medium text-slate-900 block">{val}</span>
                                     <span className="text-xs text-slate-500">Size: L, Color: Blue</span>
