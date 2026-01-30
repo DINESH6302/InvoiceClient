@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 
-export default function CustomersPage() {
+export default function CreateCustomerPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const customerId = searchParams.get('id');
-  const isEditMode = !!customerId;
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -23,69 +20,11 @@ export default function CustomersPage() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState({ success: false, message: '' });
-  const [loadingInitial, setLoadingInitial] = useState(isEditMode);
-  
-  // Separate state for fetched data to allow processing after countries load
-  const [fetchedData, setFetchedData] = useState(null);
 
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [states, setStates] = useState([]);
   const [loadingStates, setLoadingStates] = useState(false);
-
-  // Fetch customer details if in edit mode
-  useEffect(() => {
-     if (!isEditMode) return;
-
-     const fetchCustomer = async () => {
-         try {
-             const response = await apiFetch(`/customers/${customerId}`);
-             if (response.ok) {
-                 const json = await response.json();
-                 const data = json.data || json; 
-                 setFetchedData(data);
-             } else {
-                 console.error("Failed to fetch customer details");
-                 setLoadingInitial(false);
-             }
-         } catch (error) {
-             console.error("Error fetching customer", error);
-             setLoadingInitial(false);
-         }
-     };
-
-     fetchCustomer();
-  }, [customerId, isEditMode]);
-
-  // Process fetched data once countries are available
-  useEffect(() => {
-    if (!fetchedData || loadingCountries) return;
-
-    // Map country name to code
-    let countryCode = '';
-    if (countries.length > 0 && fetchedData.address?.country) {
-        const found = countries.find(c => c.name.common === fetchedData.address.country);
-        if (found) {
-            countryCode = found.cca2;
-        } else {
-             // Fallback: If not found by name, maybe it is a code?
-             const foundByCode = countries.find(c => c.cca2 === fetchedData.address.country);
-             if (foundByCode) countryCode = foundByCode.cca2;
-        }
-    }
-
-    setFormData({
-        customerName: fetchedData.customer_name || '',
-        gstNo: fetchedData.gst_no || '',
-        streetLine: fetchedData.address?.street || '',
-        city: fetchedData.address?.city || '',
-        zipCode: fetchedData.address?.zip_code || '',
-        country: countryCode, 
-        state: fetchedData.address?.state || '',
-    });
-    
-    setLoadingInitial(false);
-  }, [fetchedData, countries, loadingCountries]);
 
   // Fetch countries on component mount
   useEffect(() => {
@@ -110,9 +49,6 @@ export default function CustomersPage() {
       return;
     }
     
-    // Only fetch states if we haven't already or if country changed
-    // Ideally we should cache this, but for now simple fetch is okay.
-    // However, if we are loading initial data, we need to make sure states load for the selected country
     fetchStates(formData.country);
   }, [formData.country, countries]);
 
@@ -161,7 +97,7 @@ export default function CustomersPage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value   
     }));
   };
 
@@ -170,6 +106,10 @@ export default function CustomersPage() {
     setIsSubmitting(true);
     setResult({ success: false, message: '' });
     
+    // Find country name from code for payload
+    const selectedCountry = countries.find(c => c.cca2 === formData.country);
+    const countryName = selectedCountry ? selectedCountry.name.common : formData.country;
+
     const payload = {
         customer_name: formData.customerName,
         gst_no: formData.gstNo,
@@ -178,28 +118,20 @@ export default function CustomersPage() {
             city: formData.city,
             state: formData.state,
             zip_code: formData.zipCode,
-            country: countries.find(c => c.cca2 === formData.country)?.name.common || formData.country,
+            country: countryName,
         }
     };
     
-    if (isEditMode) {
-        payload.customer_id = customerId;
-    }
-
     try {
-        const method = isEditMode ? "PUT" : "POST";
-        const endpoint = isEditMode ? `/customers/${customerId}` : "/customers";
-        
-        const response = await apiFetch(endpoint, {
-            method: method,
+        const response = await apiFetch("/customers", {
+            method: "POST",
             body: JSON.stringify(payload),
         });
 
         const data = await response.json();
         
         if (response.ok) { 
-            const successMsg = isEditMode ? "Customer updated successfully" : "Customer created successfully";
-            setResult({ success: true, message: data.message || successMsg });
+            setResult({ success: true, message: data.message || "Customer created successfully" });
             setSubmitted(true);
         } else {
             setResult({ success: false, message: data.message || "Operation failed" });
@@ -221,17 +153,6 @@ export default function CustomersPage() {
       setSubmitted(false);
     }
   };
-
-  if (loadingInitial) {
-      return (
-          <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-500">Loading customer details...</p>
-              </div>
-          </div>
-      );
-  }
 
   return (
     <div className="bg-slate-50 flex items-center justify-center mt-16 ">
@@ -272,10 +193,10 @@ export default function CustomersPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              {isEditMode ? 'Edit Customer' : 'Create Customer'}
+              Create Customer
           </h1>
           <p className="text-slate-500">
-              {isEditMode ? 'Update existing customer details.' : 'Enter your customer details below.'}
+              Enter your customer details below.
           </p>
         </div>
 
@@ -297,8 +218,8 @@ export default function CustomersPage() {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-
-            <div>
+            
+             <div>
               <label htmlFor="gstNo" className="block text-sm font-medium text-slate-900 mb-2">
                 GST No
               </label>
@@ -314,155 +235,137 @@ export default function CustomersPage() {
             </div>
           </div>
 
-          {/* Location Details Section */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="space-y-6">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="text-sm font-semibold text-slate-900 uppercase tracking-wide">Address</span>
-            </div>
-
-            {/* Street Address */}
-            <div className="mb-4">
-              <input
-                type="text"
+              Address
+            </h3>
+            
+            <div>
+              <label htmlFor="streetLine" className="block text-sm font-medium text-slate-900 mb-2">
+                Street Address
+              </label>
+              <textarea
+                id="streetLine"
                 name="streetLine"
                 value={formData.streetLine}
                 onChange={handleChange}
-                required
+                rows={2}
                 placeholder="Street Address Line"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>
 
-            {/* City and Zip Code */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-2 gap-6">
               <div>
+                <label htmlFor="city" className="block text-sm font-medium text-slate-900 mb-2">
+                  City
+                </label>
                 <input
                   type="text"
+                  id="city"
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  required
                   placeholder="City"
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
+                <label htmlFor="zipCode" className="block text-sm font-medium text-slate-900 mb-2">
+                  Zip / Postal Code
+                </label>
                 <input
                   type="text"
+                  id="zipCode"
                   name="zipCode"
                   value={formData.zipCode}
                   onChange={handleChange}
-                  required
-                  placeholder="Zip code"
+                  placeholder="Zip Code"
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
 
-            {/* Country and State */}
             <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="country" className="block text-sm font-medium text-slate-900 mb-2">
-                  Country/Region
-                </label>
-                <div className="relative">
+               <div>
+                  <label htmlFor="country" className="block text-sm font-medium text-slate-900 mb-2">
+                    Country
+                  </label>
                   <select
                     id="country"
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
-                    required
-                    disabled={loadingCountries}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'right 0.75rem center',
-                      backgroundSize: '1.5em 1.5em',
-                      paddingRight: '2.5rem'
-                    }}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
-                    <option value="">{loadingCountries ? "Loading countries..." : "Select Country/Region"}</option>
-                    {countries.map((c) => (
-                      <option key={c.cca2} value={c.cca2}>
-                        {c.name.common}
+                    <option value="">Select Country</option>
+                    {countries.map((country) => (
+                      <option key={country.cca2} value={country.cca2}>
+                        {country.name.common}
                       </option>
                     ))}
                   </select>
-                  {(() => {
-                    const selected = countries.find((c) => c.cca2 === formData.country);
-                    if (selected && selected.flags?.emoji) {
-                      return (
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl pointer-events-none">
-                          {selected.flags.emoji}
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="state" className="block text-sm font-medium text-slate-900 mb-2">
-                  State/Province
-                </label>
-                <select
-                  id="state"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  required
-                  disabled={!formData.country || loadingStates || states.length === 0}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.75rem center',
-                    backgroundSize: '1.5em 1.5em',
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  <option value="">
-                    {loadingStates
-                      ? "Loading states..."
-                      : !formData.country
-                      ? "Select country first"
-                      : states.length === 0
-                      ? "No states available"
-                      : "Select State/Province"}
-                  </option>
-                  {states.map((s) => (
-                    <option key={s.code} value={s.name}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+               </div>
+               <div>
+                 <label htmlFor="state" className="block text-sm font-medium text-slate-900 mb-2">
+                    State / Province
+                 </label>
+                 {states.length > 0 ? (
+                    <select
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Select State</option>
+                      {states.map((state) => (
+                        <option key={state.name} value={state.name}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
+                 ) : (
+                    <input
+                      type="text"
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      placeholder="State"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                 )}
+               </div>
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-slate-200">
-             <button
-              type="reset"
+          <div className="pt-6 border-t border-slate-100 flex gap-4">
+            <button
+              type="button"
               onClick={() => router.push('/customers')}
-              className="px-6 py-2 text-slate-700 border border-slate-300 rounded-lg font-medium hover:bg-slate-100 transition-colors"
+              className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className="flex-1 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center justify-center gap-2"
             >
-              {isSubmitting ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Customer' : 'Create Customer')}
+              {isSubmitting ? (
+                 <>
+                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                   Creating...
+                </>
+              ) : (
+                'Create Customer'
+              )}
             </button>
-  
           </div>
         </form>
       </div>

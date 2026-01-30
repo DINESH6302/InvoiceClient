@@ -21,7 +21,7 @@ export function OrganizationProvider({ children }) {
     }
   }, [currentOrgId]);
 
-  const currentOrg = organizations.find(o => o.org_id === currentOrgId);
+  const currentOrg = organizations.find(o => String(o.org_id) === String(currentOrgId));
 
   const addOrganization = (name, orgId) => {
     const newOrg = { org_id: orgId, org_name: name };

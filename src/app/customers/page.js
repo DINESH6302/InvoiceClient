@@ -72,7 +72,8 @@ export default function CustomersIndexPage() {
   };
   
   const handleEdit = (id) => {
-      router.push(`/customers/new?id=${id}`);
+      sessionStorage.setItem('editCustomerId', id);
+      router.push('/customers/edit');
   };
 
   return (
@@ -93,15 +94,15 @@ export default function CustomersIndexPage() {
             <div className="flex justify-end gap-3 mt-6">
                 <button 
                     onClick={cancelDelete}
-                    className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg font-medium transition-colors"
                 >
                     Cancel
                 </button>
                 <button 
                     onClick={confirmDelete}
-                    className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors shadow-sm"
                 >
-                    Delete Customer
+                   Delete Customer
                 </button>
             </div>
           </div>
@@ -114,7 +115,7 @@ export default function CustomersIndexPage() {
           <p className="text-slate-500 mt-1">Manage your customers and billing details.</p>
         </div>
         <Link 
-          href="/customers/new"
+          href="/customers/create"
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,56 +148,63 @@ export default function CustomersIndexPage() {
             Get started by adding your first customer to generate invoices for them.
             </p>
             <Link
-            href="/customers/new"
+            href="/customers/create"
             className="text-blue-600 hover:text-blue-700 font-medium"
             >
             Add your first customer &rarr;
             </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-blue-50 border-b border-blue-100">
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">S.No</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">Name</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">GST No</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">City</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700">State</th>
-                <th className="px-6 py-4 text-sm font-semibold text-slate-700 text-right">Actions</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider">S.No</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider">GST No</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider">City</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider">State</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-900 uppercase tracking-wider text-center w-24">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {customers.map((customer, index) => (
-                <tr key={customer.customer_id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <td className="px-6 py-4 text-sm text-slate-600 font-medium">
-                    {index + 1}
+                <tr key={customer.customer_id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                  <td className="px-4 py-3 text-sm text-slate-500 font-medium">
+                    {String(index + 1).padStart(2, '0')}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">
-                    {customer.customer_name}
+                  <td className="px-4 py-3">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 border border-blue-200">
+                            {customer.customer_name?.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="font-semibold text-slate-900">{customer.customer_name}</div>
+                     </div>
                   </td>
-                   <td className="px-6 py-4 text-sm text-slate-600">
-                    {customer.gst_no || '-'}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 font-mono">
+                         {customer.gst_no || 'N/A'}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-slate-600">
                     {customer.address?.city || '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
+                  <td className="px-4 py-3 text-sm text-slate-600">
                     {customer.address?.state || '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 text-right">
-                    <div className="flex items-center justify-end gap-3">
+                  <td className="px-4 py-3 text-sm text-slate-600 text-center">
+                    <div className="flex items-center justify-center gap-2">
                         <button 
                             onClick={() => handleEdit(customer.customer_id)}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                             title="Edit Customer"
                         >
                             <Pencil size={18} />
                         </button>
                         <button 
                             onClick={() => handleDeleteClick(customer.customer_id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete Customer"
                         >
                             <Trash2 size={18} />

@@ -12,6 +12,10 @@ export default function AppLayout({ children }) {
   // Full screen for /templates/create and /templates/[id], but not for /templates list
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
   const isTemplateDetail = pathname.startsWith('/templates/') && pathname !== '/templates';
+  const isPreviewPage = pathname === '/invoices/preview';
+  
+  // FullScreen: No Sidebar, No Header (Template Editor, Auth, New Org)
+  // Note: Preview Page is NOT FullScreen (has Sidebar), but NO Header.
   const isFullScreen = isTemplateDetail || pathname === '/organizations/new' || isAuthPage;
 
   if (isTemplateDetail) {
@@ -22,12 +26,14 @@ export default function AppLayout({ children }) {
       return <main className="min-h-screen w-full bg-slate-50 text-slate-900">{children}</main>;
   }
 
+  const showHeader = !isPreviewPage;
+
   return (
     <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <div className="flex-1 flex flex-col ml-56 h-screen">
-            <Header />
-            <main key={currentOrg?.org_id} className="mt-16 bg-slate-50 flex-1 overflow-y-auto relative">
+            {showHeader && <Header />}
+            <main className={`${showHeader ? 'mt-16' : ''} bg-slate-50 flex-1 overflow-y-auto relative`}>
                 {children}
             </main>
         </div>

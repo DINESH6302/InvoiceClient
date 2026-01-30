@@ -10,11 +10,12 @@ import {
   X,
   CheckCircle,
   AlertCircle,
+  Star,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import InvoiceTemplateBuilder from "@/components/invoice-template/InvoiceTemplateBuilder";
-import { apiFetch } from '@/lib/api';
+import { apiFetch } from "@/lib/api";
 
 export default function TemplatesPage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function TemplatesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [apiResponse, setApiResponse] = useState(null); // { type: 'success' | 'error', message: '' }
+  const [warningModal, setWarningModal] = useState({ open: false, message: "" });
 
   useEffect(() => {
     fetchTemplates();
@@ -72,6 +74,30 @@ export default function TemplatesPage() {
 
   const handleOpenDelete = (id, e) => {
     e.stopPropagation();
+
+    // Check if it's the only template
+    if (savedTemplates.length <= 1) {
+      setWarningModal({
+        open: true,
+        message: "Cannot delete the only remaining template.",
+      });
+      setOpenDropdownId(null);
+      return;
+    }
+
+    const template = savedTemplates.find((t) => t.template_id === id);
+
+    // Check if it's the default template
+    if (template && template.is_default) {
+      setWarningModal({
+        open: true,
+        message:
+          "Cannot delete the default template. Please set another template as default first.",
+      });
+      setOpenDropdownId(null);
+      return;
+    }
+
     setTemplateToDelete(id);
     setShowDeleteModal(true);
     setOpenDropdownId(null);
@@ -136,10 +162,13 @@ export default function TemplatesPage() {
   };
 
   const handleEdit = (id) => {
-    // router.push(`/templates/${id}`);
-    setSelectedTemplateId(id);
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem('editTemplateId', id);
+        router.push(`/templates/edit`);
+    }
   };
 
+  /*
   if (selectedTemplateId) {
     return (
       <div className="fixed inset-0 z-50 bg-white h-screen w-screen overflow-hidden">
@@ -153,6 +182,7 @@ export default function TemplatesPage() {
       </div>
     );
   }
+  */
 
   return (
     <div
@@ -176,6 +206,34 @@ export default function TemplatesPage() {
           >
             <X size={16} />
           </button>
+        </div>
+      )}
+
+      {/* Warning Modal */}
+      {warningModal.open && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-4">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">
+                Action Blocked
+              </h3>
+              <p className="text-sm text-slate-600 mb-6">
+                {warningModal.message}
+              </p>
+              <button
+                onClick={() => setWarningModal({ open: false, message: "" })}
+                className="w-full px-4 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-800 font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -243,9 +301,16 @@ export default function TemplatesPage() {
             <div
               key={template.template_id}
               onClick={() => handleEdit(template.template_id)}
-              className="bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group cursor-pointer"
+              className={`bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow relative group cursor-pointer ${template.is_default ? 'border-blue-200 ring-1 ring-blue-100' : 'border-slate-200'}`}
             >
-              <div className="h-40 bg-slate-100 border-b border-slate-100 flex items-center justify-center rounded-t-lg">
+              {template.is_default && (
+                <div className="absolute top-3 left-3 z-10">
+                  <span className="bg-blue-500/70 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                    <Star size={10} className="fill-white" /> DEFAULT
+                  </span>
+                </div>
+              )}
+              <div className="h-40 bg-slate-100 border-b border-slate-100 flex items-center justify-center rounded-t-lg relative overflow-hidden">
                 <FileText size={48} className="text-slate-300" />
               </div>
               <div className="p-4">

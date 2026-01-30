@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, Package, FileText, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Package, FileText, Receipt, Plus } from 'lucide-react';
 import { useOrganization } from '@/context/OrganizationContext';
 
 const MENU_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Invoices', href: '/invoices', icon: Receipt },
   { name: 'Customers', href: '/customers', icon: Users },
   { name: 'Items', href: '/items', icon: Package },
   { name: 'Templates', href: '/templates', icon: FileText },

@@ -1,35 +1,35 @@
 'use client';
 
-
-import { User, ChevronDown, Plus, LogOut, Settings, Pencil, Trash2, X } from 'lucide-react';
+import { User, ChevronDown, LogOut, Settings, Plus, Pencil, Trash2, X } from 'lucide-react';
 import { useOrganization } from '@/context/OrganizationContext';
-import { useCallback } from 'react';
-import { apiFetch } from '@/lib/api';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearTokens } from '@/lib/auth';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, apiFetch } from '@/lib/api';
 
 export default function Header() {
-    const { currentOrg, switchOrganization, setOrganizations } = useOrganization();
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [orgNames, setOrgNames] = useState([]);
-    const [loadingOrgs, setLoadingOrgs] = useState(false);
-    const [deleteConfirm, setDeleteConfirm] = useState({ open: false, orgId: null, orgName: '' });
-    const [deleteStatus, setDeleteStatus] = useState({ type: null, message: '' });
+    const { currentOrg, switchOrganization, setOrganizations, organizations } = useOrganization();
+    
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const router = useRouter();
-  const dropdownRef = useRef(null);
-  const profileDropdownRef = useRef(null);
+    
+    // Organization Dropdown States
+    const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
+    const [loadingOrgs, setLoadingOrgs] = useState(true);
+    const [deleteConfirm, setDeleteConfirm] = useState({ open: false, orgId: null, orgName: '' });
+    const [deleteStatus, setDeleteStatus] = useState({ type: null, message: '' });
+
+    const router = useRouter();
+    const profileDropdownRef = useRef(null);
+    const orgDropdownRef = useRef(null);
 
     useEffect(() => {
         function handleClickOutside(event) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsDropdownOpen(false);
-            }
             if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
                 setIsProfileOpen(false);
+            }
+            if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target)) {
+                setIsOrgDropdownOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -42,6 +42,15 @@ export default function Header() {
     useEffect(() => {
         fetchOrgNames();
     }, []);
+
+    // Redirect to org creation if no orgs exist
+    useEffect(() => {
+        if (!loadingOrgs && organizations.length === 0) {
+            if (!window.location.pathname.includes('/organizations/new')) {
+                router.push('/organizations/new');
+            }
+        }
+    }, [loadingOrgs, organizations.length, router]);
 
     // Auto-close delete status notification after 3 seconds
     useEffect(() => {
@@ -60,26 +69,61 @@ export default function Header() {
             const res = await apiFetch('/orgs/summary', { method: 'GET' });
             if (res.ok) {
                 const data = await res.json();
-                // Data should be array like [{ org_id: "20", org_name: "ECOM" }, ...]
                 const orgList = Array.isArray(data) ? data : data.data || [];
-                setOrgNames(orgList);
-                // Also store in context
-                if (setOrganizations && orgList.length > 0) {
+                
+                if (setOrganizations) {
                     setOrganizations(orgList);
-                    // Set first org as current if none is selected
-                    if (!currentOrg && orgList.length > 0) {
+                    const savedOrgId = localStorage.getItem('current_org_id');
+                    if (!savedOrgId && orgList.length > 0) {
                         switchOrganization(orgList[0].org_id);
                     }
                 }
             } else {
-                setOrgNames([]);
+                if (setOrganizations) setOrganizations([]);
             }
         } catch (e) {
             console.error("Error fetching org summary:", e);
-            setOrgNames([]);
+            if (setOrganizations) setOrganizations([]);
         }
         setLoadingOrgs(false);
     }, []);
+
+    const handleDeleteOrg = async () => {
+        try {
+            const res = await apiFetch(`/orgs/${deleteConfirm.orgId}`, { method: 'DELETE' });
+            
+            if (res.status === 204 || res.ok) {
+                const updatedOrgs = organizations.filter(org => org.org_id !== deleteConfirm.orgId);
+                
+                if (updatedOrgs.length > 0) {
+                    const nextOrgId = updatedOrgs[0].org_id;
+                    const wasCurrentDeleted = String(currentOrg?.org_id) === String(deleteConfirm.orgId);
+                    if (wasCurrentDeleted) {
+                        localStorage.setItem('current_org_id', nextOrgId);
+                    }
+                    window.location.reload();
+                } else {
+                    localStorage.removeItem('current_org_id');
+                    setOrganizations([]);
+                    router.push('/organizations/new');
+                }
+                
+                setDeleteConfirm({ open: false, orgId: null, orgName: '' });
+                setIsOrgDropdownOpen(false);
+            } else {
+                let errorMsg = 'Failed to delete organization.';
+                try {
+                    const data = await res.json();
+                    errorMsg = data.message || data.error || errorMsg;
+                } catch (e) {
+                    errorMsg = res.statusText || errorMsg;
+                }
+                setDeleteStatus({ type: 'error', message: errorMsg });
+            }
+        } catch (err) {
+            setDeleteStatus({ type: 'error', message: err.message || 'Failed to delete organization.' });
+        }
+    };
 
   const handleLogout = async () => {
       try {
@@ -95,122 +139,91 @@ export default function Header() {
       }
   };
 
-  const handleDeleteOrg = async () => {
-      try {
-          const res = await apiFetch(`/orgs/${deleteConfirm.orgId}`, { method: 'DELETE' });
-          
-          if (res.status === 204 || res.ok) {
-              // Remove from local state
-              const updatedOrgs = orgNames.filter(org => org.org_id !== deleteConfirm.orgId);
-              setOrgNames(updatedOrgs);
-              setOrganizations(updatedOrgs);
-              
-              // Reset current org if deleted org was selected
-              if (currentOrg?.org_id === deleteConfirm.orgId) {
-                  if (updatedOrgs.length > 0) {
-                      switchOrganization(updatedOrgs[0].org_id);
-                  }
-              }
-              
-              setDeleteStatus({ type: 'success', message: 'Organization deleted successfully.' });
-              setDeleteConfirm({ open: false, orgId: null, orgName: '' });
-              setIsDropdownOpen(false);
-          } else {
-              let errorMsg = 'Failed to delete organization.';
-              try {
-                  const data = await res.json();
-                  errorMsg = data.message || data.error || errorMsg;
-              } catch (e) {
-                  errorMsg = res.statusText || errorMsg;
-              }
-              setDeleteStatus({ type: 'error', message: errorMsg });
-          }
-      } catch (err) {
-          setDeleteStatus({ type: 'error', message: err.message || 'Failed to delete organization.' });
-      }
-  };
-
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 fixed top-0 right-0 left-56 z-10 shadow-sm">
       <div className="flex items-center gap-4">
-        {/* Breadcrumb or Title could go here */}
+        {/* Breadcrumbs or other left-side content */}
       </div>
 
       <div className="flex items-center gap-6">
-        {/* Organization Switcher */}
-        {orgNames.length > 0 ? (
-          <div className="relative" ref={dropdownRef}>
-            <button 
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200"
-            >
-              {currentOrg?.org_name || currentOrg?.name || "Select Organization"}
-              <ChevronDown size={14} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}/>
-            </button>
-            
-            {isDropdownOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-100 rounded-md shadow-lg border border-slate-100 py-1 z-50">
-                {orgNames.map((org, idx) => {
-                  const orgId = org.org_id;
-                  const orgName = org.org_name;
-                  const isSelected = currentOrg?.org_id === orgId || currentOrg?.id === orgId;
-                  return (
-                    <div key={orgId || idx} className="flex items-center hover:bg-slate-50 group">
-                      <button
-                        onClick={() => {
-                          localStorage.setItem('current_org_id', orgId);
-                          switchOrganization(orgId);
-                          setIsDropdownOpen(false);
-                        }}
-                        className={`flex-1 text-left px-4 py-2 text-sm ${isSelected ? 'text-blue-600 font-medium' : 'text-slate-600'}`}
-                      >
-                        {orgName}
-                      </button>
-                      <button
-                        onClick={() => {
-                          router.push(`/organizations/new?id=${orgId}`);
-                          setIsDropdownOpen(false);
-                        }}
-                        className="px-3 py-2 text-slate-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Edit organization"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm({ open: true, orgId, orgName })}
-                        className="px-3 py-2 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Delete organization"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
-                <div className="border-t border-slate-100 my-1"></div>
-                <button
-                  onClick={() => {
-                    router.push('/organizations/new');
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <Plus size={14} />
-                  New Organization
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => router.push('/organizations/new')}
-            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors bg-blue-50 px-4 py-1.5 rounded-md border border-blue-200"
-          >
-            <Plus size={14} />
-            Create Organization
-          </button>
-        )}
         
-        <div className="flex items-center gap-3 pl-6 border-l border-slate-200 relative" ref={profileDropdownRef}>
+        {/* Organization Dropdown */}
+        {organizations.length > 0 && (
+            <div className="relative" ref={orgDropdownRef}>
+                <button 
+                  onClick={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
+                  className="flex items-center gap-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                >
+                  <span className="max-w-[150px] truncate">{currentOrg?.org_name || currentOrg?.name || "Select Org"}</span>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isOrgDropdownOpen ? 'rotate-180' : ''}`}/>
+                </button>
+                
+                {isOrgDropdownOpen && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white rounded-md shadow-lg border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="max-h-[300px] overflow-y-auto">
+                        {organizations.map((org, idx) => {
+                        const orgId = org.org_id;
+                        const orgName = org.org_name;
+                        const isSelected = currentOrg?.org_id === orgId || currentOrg?.id === orgId;
+                        return (
+                            <div key={orgId || idx} className={`flex items-center group px-1 mx-1 rounded-md mb-0.5 ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                            <button
+                                onClick={() => {
+                                localStorage.setItem('current_org_id', orgId);
+                                switchOrganization(orgId);
+                                setIsOrgDropdownOpen(false);
+                                window.location.reload();
+                                }}
+                                className={`flex-1 text-left px-2 py-2 text-sm truncate rounded-md ${isSelected ? 'text-blue-600 font-medium' : 'text-slate-600'}`}
+                            >
+                                {orgName}
+                            </button>
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity px-1 gap-1">
+                                <button
+                                    onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/organizations/new?id=${orgId}`);
+                                    setIsOrgDropdownOpen(false);
+                                    }}
+                                    className={`p-1.5 rounded-md transition-colors ${isSelected ? 'text-blue-400 hover:text-blue-600 hover:bg-blue-100' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                                    title="Edit organization"
+                                >
+                                    <Pencil size={14} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteConfirm({ open: true, orgId, orgName });
+                                    }}
+                                    className={`p-1.5 rounded-md transition-colors ${isSelected ? 'text-blue-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
+                                    title="Delete organization"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                            </div>
+                        );
+                        })}
+                    </div>
+                    <div className="border-t border-slate-100 my-1"></div>
+                    <button
+                      onClick={() => {
+                        router.push('/organizations/new');
+                        setIsOrgDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 mx-1 rounded-md"
+                    >
+                      <Plus size={14} />
+                      New Organization
+                    </button>
+                  </div>
+                )}
+            </div>
+        )}
+
+        <div className="h-8 w-px bg-slate-200"></div>
+
+        <div className="flex items-center gap-3 pl-2 relative" ref={profileDropdownRef}>
             <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition-colors outline-none"
@@ -278,11 +291,10 @@ export default function Header() {
                         )}
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4 border border-slate-200">
+       {/* Delete Confirmation Modal for Organization */}
+       {deleteConfirm.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4 border border-slate-200 text-slate-900">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Delete Organization?</h3>
               <p className="text-slate-600 text-sm mt-2">
@@ -307,14 +319,14 @@ export default function Header() {
         </div>
       )}
 
-      {/* Delete Success/Error Notification */}
+      {/* Delete Status Notification for Organization */}
       {deleteStatus.type && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-lg p-4 shadow-lg max-w-md border flex items-start gap-3 ${
-          deleteStatus.type === 'success' 
-            ? 'bg-emerald-50 border-emerald-200' 
-            : 'bg-red-50 border-red-200'
-        }`}>
-          <p className={`flex-1 text-sm font-medium ${
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 rounded-lg p-4 shadow-lg max-w-md border flex items-start gap-3 ${
+            deleteStatus.type === 'success' 
+              ? 'bg-emerald-50 border-emerald-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+               <p className={`flex-1 text-sm font-medium ${
             deleteStatus.type === 'success' 
               ? 'text-emerald-900' 
               : 'text-red-900'
@@ -331,7 +343,7 @@ export default function Header() {
           >
             <X size={18} />
           </button>
-        </div>
+          </div>
       )}
     </header>
   );

@@ -11,98 +11,90 @@ const toWords = new ToWords({
   }
 });
 
-export default function TemplatePreview({ template, renderData }) {
+export default function InvoiceDocument({ template, data }) {
+  // If no data is available, we can't render properly, but we'll try to prevent crash
+  if (!data) return <div className="p-8 text-center text-red-500">Invoice data is missing.</div>;
+  if (!template) return <div className="p-8 text-center text-red-500">Template data is missing.</div>;
+
   // Calculate total visible width percentage
-  // If user sets columns like "10%" and there are 15 of them, total is 150%.
-  // A4 Page is 210mm. If total > 100%, page extends.
-  // We parse "10%" -> 10.
   const totalWidthPercent = template.table.columns
     .filter(c => c.visible)
     .reduce((acc, col) => acc + (parseFloat(col.width) || 0), 0);
 
-  // Helper to safely get nested values
-  const getFieldValue = (section, key, fallback) => {
-      // 1. Try finding by key in the section (e.g. data.header['header_123'])
-      if (renderData && renderData[section] && renderData[section][key] !== undefined) {
-          return renderData[section][key];
-      }
-      
-      // 2. Try finding by key in the root data
-      if (renderData && renderData[key] !== undefined) return renderData[key];
-
-      // 3. Try finding in 'fields' array if the section has it (Invoice API structure)
-      if (renderData && renderData[section] && Array.isArray(renderData[section].fields)) {
-          const fieldObj = renderData[section].fields.find(f => f.key === key);
-          if (fieldObj) return fieldObj.value;
-      }
-      
-      return fallback;
-  };
-
-  // We are using `box-sizing: border-box`. 
-  // The container has `p-12` padding. 
-  // 1 inch = 25.4mm = 96px. 
-  // p-12 = 3rem = 48px = 0.5 inches = 12.7mm.
-  // Left + Right = 25.4mm.
-  const horizontalPaddingMm = 26; // Using 26 to be safe
+  const horizontalPaddingMm = 26; 
   const standardPageWidthMm = 210;
-  const standardContentWidthMm = standardPageWidthMm - horizontalPaddingMm; // ~184mm
+  const standardContentWidthMm = standardPageWidthMm - horizontalPaddingMm; 
   
-  // Calculate the raw required width for the table content
-  // If columns sum to 100%, they should take up `standardContentWidthMm`.
-  // If columns sum to 120%, they take up `1.2 * standardContentWidthMm`.
   const contentWidthMm = (totalWidthPercent / 100) * standardContentWidthMm;
-  
-  // The page width is Max(A4, content + padding)
   const pageWidthMm = Math.max(standardPageWidthMm, contentWidthMm + horizontalPaddingMm);
 
-  // Auto-fit logic: If columns sum < 100%, scale them up to fill the print area.
   const widthScale = totalWidthPercent > 0 && totalWidthPercent < 100 
     ? (100 / totalWidthPercent) 
     : 1;
 
   const getColWidth = (widthStr) => {
       const pct = parseFloat(widthStr) || 0;
-      // Calculate mm based on the CONTENT width, not page width.
       return `${(pct * widthScale / 100) * standardContentWidthMm}mm`; 
   };
   
-  // Dummy Data for Preview
-  const PREVIEW_ROWS = [1, 2, 3, 4, 5, 6];
+  // Helper to safely get nested values
+  const getFieldValue = (section, key, fallback) => {
+      // 1. Direct Access nested (e.g. data.header.invoice_number)
+      if (data && data[section] && data[section][key] !== undefined) {
+          return data[section][key];
+      }
+      // 2. Direct Access root
+      if (data && data[key] !== undefined) return data[key];
+
+      // 3. API Field Structure Access (e.g. data.header.fields[{key:..., value:...}])
+      if (data && data[section] && Array.isArray(data[section].fields)) {
+          const field = data[section].fields.find(f => f.key === key);
+          if (field) return field.value;
+      }
+
+      return fallback;
+  };
+
+  // Determine rows to render: Real Data items or empty array
+  const rowsToRender = (data && data.items && Array.isArray(data.items.fields)) ? data.items.fields : [];
 
   // Helper to compute all cell values including formulas
+  // NOTE: This logic mimics the frontend calculation. 
+  // Ideally backend should provide calculated totals, but for "preview" consistency we re-run it.
   const calculateRowValues = (rowItem, rowIndex) => {
-      // 1. Initial Data Pass
       const values = template.table.columns.map((col) => {
-          // A. Real Data Handling
-          if (renderData && typeof rowItem === 'object') {
-              // Priority 1: Check 'fields' array (API Standard)
-              if (Array.isArray(rowItem.fields)) {
-                  const field = rowItem.fields.find(f => f.key === col.key);
-                  if (field) return field.value;
-              }
-              // Priority 2: Direct Property Access
-              if (rowItem[col.key] !== undefined) return rowItem[col.key];
+         // S.No
+         if (col.label === 'S.No') return rowIndex + 1;
+         
+         // Item & Description special handling? 
+         // If rowItem has description field directly or in fields
+         if (col.label.toLowerCase() === 'item & description') {
+             // Try check usual keys
+             if (rowItem.description) return rowItem.description;
+             if (rowItem['Item & Description']) return rowItem['Item & Description'];
+             // Try check fields
+             if (Array.isArray(rowItem.fields)) {
+                 const f = rowItem.fields.find(k => k.key === 'description' || k.key === 'item_description');
+                 if (f) return f.value;
+             }
+         }
 
-              // Priority 3: Special Columns
-              if (col.label === 'S.No') return rowIndex + 1;
+         // Direct Mapping
+         if (rowItem[col.key] !== undefined) {
+             return rowItem[col.key];
+         }
+         
+         // Fields Array Mapping
+         if (Array.isArray(rowItem.fields)) {
+              const f = rowItem.fields.find(k => k.key === col.key);
+              if (f) return f.value;
+         }
 
-              // Fallback
-              return 0;
-          }
-
-          // B. Dummy Data Handling
-          const rowNum = rowItem;
-          if (col.label === 'S.No') return rowNum;
-          if (col.label === 'Item & Description') return "Premium Product Name";
-          if (col.label === 'Quantity') return rowNum * 2;
-          if (col.label === 'price') return 150.00; // Note: 'price' is lower case in init
-          
-          return 0;
+         // Fallback/Default
+         return 0; 
       });
 
-      // 2. Formula Pass - Multi-pass to handle dependencies regardless of column order
-      // Run multiple passes until all formulas are resolved or max iterations reached
+      // Formula Pass - Multi-pass to handle dependencies regardless of column order
       const MAX_PASSES = 5;
       let changed = true;
       let pass = 0;
@@ -112,52 +104,36 @@ export default function TemplatePreview({ template, renderData }) {
           pass++;
           
           template.table.columns.forEach((col, idx) => {
-              if (col.type === 'formula' && col.formula) {
-                  try {
-                      // Replace Column References [Label] with actual numeric values
-                      const expr = col.formula.replace(/\[(.*?)\]/g, (match, labelName) => {
-                          // Find column by Label (case-insensitive for flexibility)
-                          const colIndex = template.table.columns.findIndex(c => 
-                              c.label.toLowerCase() === labelName.toLowerCase()
-                          );
-                          if (colIndex === -1) return 0; // Column not found
-
-                          const val = values[colIndex];
-                          return typeof val === 'number' ? val : 0;
-                      });
-                      
-                      // Safe Evaluate
-                      if (/^[\d+\-*/().\s]+$/.test(expr) || true) {
-                         const result = new Function(`return (${expr})`)();
-                         const newVal = Number.isFinite(result) ? result : 0;
-                         
-                         // Check if value changed
-                         if (values[idx] !== newVal) {
-                             values[idx] = newVal;
-                             changed = true;
-                         }
-                      }
-                  } catch (e) {
-                      console.warn("Formula Error", e);
-                      values[idx] = 0;
+            if (col.type === 'formula' && col.formula) {
+                 try {
+                  const expr = col.formula.replace(/\[(.*?)\]/g, (match, labelName) => {
+                      const colIndex = template.table.columns.findIndex(c => c.label.toLowerCase() === labelName.toLowerCase());
+                      if (colIndex === -1) return 0;
+                      const val = parseFloat(values[colIndex]);
+                      return isNaN(val) ? 0 : val;
+                  });
+                  if (/^[\d+\-*/().\s]+$/.test(expr) || true) {
+                     const result = new Function(`return (${expr})`)();
+                     const newVal = Number.isFinite(result) ? result : 0;
+                     
+                     if (values[idx] !== newVal) {
+                         values[idx] = newVal;
+                         changed = true;
+                     }
                   }
-              }
+                 } catch(e) { values[idx] = 0; }
+            }
           });
       }
       
       return values;
   };
 
-  // Pre-calculate all rows to be used in rendering and totals
-  const rowsSource = (renderData && renderData.items) ? renderData.items : PREVIEW_ROWS;
-  // If renderData.items is just { fields: ... } or similar wrapper, we might need to drill down. 
-  // Assuming renderData.items is Array.
-  
-  const calculatedRowsData = (Array.isArray(rowsSource) ? rowsSource : []).map((row, idx) => calculateRowValues(row, idx));
+  // Pre-calculate all rows 
+  const calculatedRowsData = rowsToRender.map((row, idx) => calculateRowValues(row, idx));
 
-  // Calculate Column Sum helper using computed data
+  // Calculate Column Sum helper
   const calculateColumnSum = (colKey) => {
-       // Find column index
        const colIdx = template.table.columns.findIndex(c => c.key === colKey);
        if (colIdx === -1) return 0;
 
@@ -166,8 +142,6 @@ export default function TemplatePreview({ template, renderData }) {
        }, 0);
   };
 
-  // Dynamic Grand Total Calculation (matches 'total' column sum or column specified in summary)
-  // Default to looking for a column named 'total' or 'amount'
   const grandTotal = calculateColumnSum('total');
   
   const fontFamilyValue = template.companyDetails.fontFamily || 'Inter';
@@ -192,27 +166,7 @@ export default function TemplatePreview({ template, renderData }) {
           <div className="space-y-1">
           {template.companyDetails.fields.filter(f => !f.key.includes('header_') || (f.label !== 'Invoice No' && f.label !== 'Date')).map(field => field.visible && (
              <div key={field.key} className={`${field.bold ? 'font-bold text-2xl text-slate-800 mb-2' : 'text-slate-600'}`}>
-                {(() => {
-                    const fallback = field.label === 'Company Name' ? 'Acme Corp Private Ltd' : 
-                                     field.label === 'Address' ? '123 Business Park, Fifth Avenue' : 
-                                     field.label === 'GSTIN' ? '33AAAAA0000A1Z5' : 
-                                     'Custom Value';
-                    
-                    const value = getFieldValue('header', field.key, fallback);
-                    
-                    // Specific formatting for GSTIN or labeled fields if needed, 
-                    // but usually the value is just the value.
-                    // If the Dummy data included "GSTIN: ", we might want to replicate that pattern if strictly needed.
-                    // But clearer is to just show value.
-                    // The previous code hardcoded 'GSTIN: ...'. Let's optionally prefix if needed.
-                    if (field.label === 'GSTIN' && !value.toString().startsWith('GSTIN')) {
-                        return `GSTIN: ${value}`;
-                    }
-                    if ((field.key.startsWith('custom') || field.key.startsWith('header')) && value === 'Custom Value') {
-                        return `${field.label}: ${value}`;
-                    }
-                    return value;
-                })()}
+               {getFieldValue('header', field.key, '--')}
              </div>
           ))}
           </div>
@@ -226,12 +180,11 @@ export default function TemplatePreview({ template, renderData }) {
               {template.companyDetails.headerTitle || 'INVOICE'}
            </h1>
            <div className="space-y-1">
-               {/* Primary Header Fields (Invoice #, Date/TimeStamps in 173... range) */}
                {template.companyDetails.fields.filter(f => f.key.includes('header_') && (f.label === 'Invoice No' || f.label === 'Date')).map(field => field.visible && (
                     <div key={field.key} className="flex justify-end gap-4">
                         <span className="font-semibold text-slate-700">{field.label}:</span> 
                         <span className="text-slate-900 font-medium">
-                            {getFieldValue('header', field.key, field.label === 'Date' ? '12 Oct 2026' : 'INV-#00912')}
+                            {getFieldValue('header', field.key, '--')}
                         </span>
                     </div>
                ))}
@@ -239,9 +192,8 @@ export default function TemplatePreview({ template, renderData }) {
         </div>
       </div>
       
-      {/* 1.5 Meta Data Section (Moved below line) */}
+      {/* 1.5 Meta Data Section */}
       <div className="mb-10">
-           
            <div className="grid gap-x-6 gap-y-4 text-left" style={{ 
                gridTemplateColumns: `repeat(${template.invoiceMeta.columnCount || 1}, minmax(0, 1fr))` 
            }}>
@@ -258,7 +210,7 @@ export default function TemplatePreview({ template, renderData }) {
                     {field.label}{isRow ? ':' : ''}
                 </span> 
                 <span className="text-slate-900 font-medium text-base">
-                     {getFieldValue('header', field.key, 'Custom Val')}
+                     {getFieldValue('invoice_meta', field.key, '--')}
                 </span>
             </div>
            )})}
@@ -275,15 +227,17 @@ export default function TemplatePreview({ template, renderData }) {
               const styles = template.customerDetails.displayStyle || {};
               const showLabel = styles.showLabel ?? true; 
               const labelBold = styles.labelBold ?? false;
-              const isRow = styles.layout === 'row'; 
+              const isRow = styles.layout === 'row';
 
-              const fallback = field.label === 'Name' ? 'John Doe Enterprises' : 
-                               field.label === 'Address' ? '45, North Street, Main Road\nChennai, Tamil Nadu - 600028' : 
-                               field.label;
-              
-              const val = getFieldValue('billTo', field.key, fallback);
-              
-              // if (field.label === 'State' && !renderData) return null;
+              let val = '--';
+              const section = data?.customer_details?.bill_to;
+              if (section) {
+                  if (section[field.key]) val = section[field.key];
+                  else if (Array.isArray(section.fields)) {
+                      const f = section.fields.find(k => k.key === field.key);
+                      if (f) val = f.value;
+                  }
+              }
 
               if (field.label === 'Name') {
                   return (
@@ -320,13 +274,15 @@ export default function TemplatePreview({ template, renderData }) {
               const labelBold = styles.labelBold ?? false;
               const isRow = styles.layout === 'row';
 
-              const fallback = field.label === 'Name' ? 'John Doe Enterprises' : 
-                               field.label === 'Address' ? 'Warehouse No. 9\nKanchipuram, Tamil Nadu' : 
-                               field.label;
-              
-              const val = getFieldValue('shipTo', field.key, fallback);
-
-              // if (field.label === 'State' && !renderData) return null;
+              let val = '--';
+              const section = data?.customer_details?.ship_to;
+              if (section) {
+                  if (section[field.key]) val = section[field.key];
+                  else if (Array.isArray(section.fields)) {
+                      const f = section.fields.find(k => k.key === field.key);
+                      if (f) val = f.value;
+                  }
+              }
 
               if (field.label === 'Name') {
                   
@@ -358,7 +314,7 @@ export default function TemplatePreview({ template, renderData }) {
 
       {/* 3. Items Table */}
       <div 
-        className="mb-10 rounded-sm overflow-hidden"
+        className="mb-10 rounded-sm overflow-hidden" 
         style={{
             border: `${template.table.borderWidth || 1}px solid rgba(0, 0, 0, ${template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity})`
         }}
@@ -368,7 +324,7 @@ export default function TemplatePreview({ template, renderData }) {
             style={{ 
                 backgroundColor: (template.companyDetails.isAccentFilled !== false) ? template.companyDetails.accentColor : 'transparent',
                 borderBottom: `${template.table.borderWidth || 1}px solid rgba(0, 0, 0, ${template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity})`,
-                color: template.table.headerTextColor || ((template.companyDetails.isAccentFilled === false) ? '#000000' : '#ffffff')
+                color: template.table?.headerTextColor || ((template.companyDetails.isAccentFilled === false) ? '#000000' : '#ffffff')
             }}
         >
            {(() => {
@@ -391,7 +347,6 @@ export default function TemplatePreview({ template, renderData }) {
                   const isLastGroup = gIdx === groups.length - 1;
 
                   // Define border color logic for separators
-                  // Use dynamic border for unfilled state, default white/20 for filled state
                   const borderColor = `rgba(0, 0, 0, ${template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity})`;
                   const borderStyle = `${template.table.borderWidth || 1}px solid ${borderColor}`;
 
@@ -412,7 +367,7 @@ export default function TemplatePreview({ template, renderData }) {
                                                 style={{ 
                                                     justifyContent: col.align === 'center' ? 'center' : (col.align === 'right' ? 'flex-end' : 'flex-start'),
                                                     borderRight: cIdx === grp.cols.length - 1 ? 'none' : borderStyle
-                                                }} 
+                                                }}
                                                 className={`flex items-center w-full h-full px-2 ${isFirstGroup && cIdx === 0 ? 'pl-4' : ''} ${isLastGroup && cIdx === grp.cols.length - 1 ? 'pr-4' : ''}`}
                                             >
                                                 {col.label}
@@ -439,7 +394,7 @@ export default function TemplatePreview({ template, renderData }) {
               });
            })()}
         </div>
-        {/* Dummy Rows */}
+        {/* Real Rows */}
         {calculatedRowsData.map((rowVals, rowIdx) => (
            <div key={rowIdx} className="flex last:border-b-0 text-slate-700 text-sm items-stretch"
                 style={{ borderBottom: rowIdx === calculatedRowsData.length - 1 ? 'none' : `${template.table.borderWidth || 1}px solid rgba(0, 0, 0, ${template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity})` }}
@@ -453,7 +408,8 @@ export default function TemplatePreview({ template, renderData }) {
                           width: getColWidth(col.width), 
                           flexShrink: 0,
                           borderRight: idx === template.table.columns.length - 1 ? 'none' : `${template.table.borderWidth || 1}px solid rgba(0, 0, 0, ${template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity})`
-                      }}
+                      }} 
+                      className=""
                  >
                     <div 
                         style={{
@@ -465,11 +421,25 @@ export default function TemplatePreview({ template, renderData }) {
                         {col.label === 'Item & Description' ? (
                             <div className="text-left w-full">
                                     <span className="font-medium text-slate-900 block">{val}</span>
-                                    <span className="text-xs text-slate-500">
-                                      {renderData && typeof rowsSource[rowIdx] === 'object' 
-                                          ? (rowsSource[rowIdx].description || '') 
-                                          : 'Size: L, Color: Blue'}
-                                    </span>
+                                    {(() => { // Render separate Description if available
+                                        const r = rowsToRender[rowIdx];
+                                        if(!r) return null;
+                                        // Attempt to find detailed description. 
+                                        // Usually 'description' key separate from item name.
+                                        let desc = r.description; 
+                                        if(!desc && Array.isArray(r.fields)) {
+                                            const f = r.fields.find(k => k.key === 'description' || k.key === 'item_description');
+                                            if(f) desc = f.value;
+                                            
+                                            // Ensure we didn't just pick up the same value as the main column if keys overlap
+                                            if (desc === val) desc = null;
+                                        }
+                                        
+                                        if (desc) {
+                                            return <span className="text-xs text-slate-500 block">{desc}</span>; 
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                              ) : 
                              (col.type === 'number' || col.type === 'formula') ? (
@@ -502,7 +472,7 @@ export default function TemplatePreview({ template, renderData }) {
                              field.visible && (
                                 <div key={idx} className="flex justify-between py-0.5">
                                     <span className="font-semibold w-24 shrink-0">{field.label}:</span> 
-                                    <span className="text-right flex-1">{field.value}</span>
+                                    <span className="text-right flex-1">{getFieldValue('footer', field.key, field.value)}</span>
                                 </div>
                              )
                         ))}

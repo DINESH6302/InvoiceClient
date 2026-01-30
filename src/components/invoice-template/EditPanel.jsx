@@ -124,6 +124,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
     const newField = { 
         key: `${prefix}${Date.now()}`, 
         label: "New Field", 
+        type: "text",
         visible: true 
     };
     if(newTemplate[section] && newTemplate[section].fields) {
@@ -214,6 +215,38 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     </div>
                 </div>
             </div>
+
+            <div className="flex items-center justify-between pt-4 border-t">
+                 <div className="space-y-2">
+                    <Label className="text-sm font-medium">Field Layout</Label>
+                    <select
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={template.invoiceMeta.displayStyle?.layout || 'col'}
+                        onChange={e => {
+                            const newT = {...template};
+                            if (!newT.invoiceMeta.displayStyle) newT.invoiceMeta.displayStyle = {};
+                            newT.invoiceMeta.displayStyle.layout = e.target.value;
+                            setTemplate(newT);
+                        }}
+                    >
+                        <option value="col">Top-Bottom</option>
+                        <option value="row">Left-Right</option>
+                    </select>
+                 </div>
+                 
+                 <div className="flex items-center gap-2 pt-6">
+                    <Switch 
+                        checked={template.invoiceMeta.displayStyle?.labelBold || false} 
+                        onCheckedChange={(checked) => {
+                            const newT = {...template};
+                            if (!newT.invoiceMeta.displayStyle) newT.invoiceMeta.displayStyle = {};
+                            newT.invoiceMeta.displayStyle.labelBold = checked;
+                            setTemplate(newT);
+                        }} 
+                    />
+                    <Label className="text-sm font-medium">Bold Labels</Label>
+                 </div>
+            </div>
         </div>
 
         <div className="space-y-4">
@@ -272,16 +305,28 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         </div>
                      </div>
                      
-                     <div className="pt-1">
+                     <div className="pt-1 flex gap-2">
                         <Input 
                             value={field.label} 
                             onChange={(e) => {
                                 const realIndex = template.invoiceMeta.fields.findIndex(f => f.key === field.key);
                                 handleFieldChange('invoiceMeta', realIndex, 'label', e.target.value);
                             }} 
-                            className="h-7 text-xs"
+                            className="h-7 text-xs flex-1"
                             placeholder="Display Label"
                         />
+                         <select
+                             className="h-7 w-20 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                             value={field.type || 'text'}
+                             onChange={(e) => {
+                                 const realIndex = template.invoiceMeta.fields.findIndex(f => f.key === field.key);
+                                 handleFieldChange('invoiceMeta', realIndex, 'type', e.target.value);
+                             }}
+                         >
+                             <option value="text">Text</option>
+                             <option value="number">Number</option>
+                             <option value="date">Date</option>
+                         </select>
                     </div>
                  </div>
                  </>
@@ -411,8 +456,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
 
           <div className="flex items-center justify-between pt-4 border-t">
              <div className="space-y-0.5">
-               <Label className="text-base">Accent Color</Label>
-               <p className="text-sm text-muted-foreground">Main color for headers and lines</p>
+               <Label className="text-base">Theme</Label>
              </div>
              <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full border shadow-sm" style={{ backgroundColor: template.companyDetails.accentColor }}></div>
@@ -423,9 +467,22 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                   onChange={e => {
                       const newT = {...template};
                       newT.companyDetails.accentColor = e.target.value;
+                      newT.companyDetails.isAccentFilled = true;
                       setTemplate(newT);
                   }} 
                 />
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-9 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => {
+                        const newT = {...template};
+                        newT.companyDetails.isAccentFilled = false;
+                        setTemplate(newT);
+                    }}
+                >
+                    Reset
+                </Button>
              </div>
           </div>
 
@@ -554,14 +611,25 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         </div>
                      </div>
                      
-                     <div className="pt-1">
+                     <div className="pt-1 flex gap-2">
                         {/* <Label className="text-[10px] text-muted-foreground mb-1 block">Label</Label> */}
                         <Input 
                             value={field.label} 
                             onChange={(e) => handleFieldChange('companyDetails', idx, 'label', e.target.value)} 
-                            className="h-7 text-xs"
+                            className="h-7 text-xs flex-1"
                             placeholder="Display Label"
                         />
+                         {(field.key !== 'name' && field.key !== 'address' && field.key !== 'gstin' && field.key !== 'invoice_no' && field.key !== 'date') && (
+                             <select
+                                 className="h-7 w-20 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                 value={field.type || 'text'}
+                                 onChange={(e) => handleFieldChange('companyDetails', idx, 'type', e.target.value)}
+                             >
+                                 <option value="text">Text</option>
+                                 <option value="number">Number</option>
+                                 <option value="date">Date</option>
+                             </select>
+                         )}
                     </div>
                  </div>
                  </>
@@ -582,7 +650,125 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
            Customize columns. Rename headers or adjust widths.
        </div>
 
-       <div className="space-y-2 pb-4">
+       <div className="flex items-center gap-4 py-2 border-b">
+            <Label className="text-sm font-medium text-slate-700">Header Text Color</Label>
+            <div className="flex items-center gap-2">
+                <div 
+                    className="w-8 h-8 rounded-full border shadow-sm" 
+                    style={{ 
+                        backgroundColor: template.table.headerTextColor || (template.companyDetails.isAccentFilled !== false ? '#ffffff' : '#000000') 
+                    }}
+                ></div>
+                <Input 
+                    type="color" 
+                    className="w-20 h-9 p-1 cursor-pointer" 
+                    value={template.table.headerTextColor || (template.companyDetails.isAccentFilled !== false ? '#ffffff' : '#000000')} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.table.headerTextColor = e.target.value;
+                        setTemplate(newT);
+                    }} 
+                />
+                {template.table.headerTextColor && (
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-9 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                            const newT = {...template};
+                            delete newT.table.headerTextColor;
+                            setTemplate(newT);
+                        }}
+                    >
+                        Reset
+                    </Button>
+                )}
+            </div>
+       </div>
+
+       <div className="grid grid-cols-2 gap-7 py-2 border-b">
+            <div className="space-y-1">
+                <div className="flex justify-between">
+                    <Label className="text-[12px] text-muted-foreground">Border Width</Label>
+                    <span className="text-[12px] text-muted-foreground">{(template.table.borderWidth || 1)}px</span>
+                </div>
+                <input 
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="0.5"
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    value={template.table.borderWidth || 1} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.table.borderWidth = parseFloat(e.target.value);
+                        setTemplate(newT);
+                    }}
+                />
+            </div>
+            <div className="space-y-1">
+                <div className="flex justify-between">
+                    <Label className="text-[12px] text-muted-foreground">Border Opacity</Label>
+                    <span className="text-[12px] text-muted-foreground">{Math.round((template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity) * 100)}%</span>
+                </div>
+                <input 
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    value={template.table.borderOpacity === undefined ? 1 : template.table.borderOpacity} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.table.borderOpacity = parseFloat(e.target.value);
+                        setTemplate(newT);
+                    }}
+                />
+            </div>
+       </div>
+
+       <div className="grid grid-cols-2 gap-7 py-2 border-b">
+            <div className="space-y-1">
+                <div className="flex justify-between">
+                    <Label className="text-[12px] text-muted-foreground">Header Height</Label>
+                    <span className="text-[12px] text-muted-foreground">{(template.table.thPadding || 12)}px</span>
+                </div>
+                <input 
+                    type="range"
+                    min="8"
+                    max="32"
+                    step="1"
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    value={template.table.thPadding || 12} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.table.thPadding = parseInt(e.target.value);
+                        setTemplate(newT);
+                    }}
+                />
+            </div>
+            <div className="space-y-1">
+                <div className="flex justify-between">
+                    <Label className="text-[12px] text-muted-foreground">Row Height</Label>
+                    <span className="text-[12px] text-muted-foreground">{(template.table.tdPadding || 16)}px</span>
+                </div>
+                <input 
+                    type="range"
+                    min="2"
+                    max="32"
+                    step="1"
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    value={template.table.tdPadding || 16} 
+                    onChange={e => {
+                        const newT = {...template};
+                        newT.table.tdPadding = parseInt(e.target.value);
+                        setTemplate(newT);
+                    }}
+                />
+            </div>
+       </div>
+
+       <div className="space-y-2 pb-4 pt-2">
          <DndContext 
             id="dnd-table"
             sensors={sensors}
@@ -614,7 +800,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     {col.key.toUpperCase()}
                 </div>
                 <div className="flex items-center gap-1">
-                    {idx > 4 && ( // Assuming first 5 are standard
+                    {!['item_1737200000001', 'item_1737200000002', 'item_1737200000003', 'item_1737200000004', 'item_1737200000005'].includes(col.key) && (
                         <Button 
                             variant="ghost" 
                             size="icon" 
@@ -658,6 +844,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                 </div>
             </div>
             <div className="mt-2 pl-8 flex gap-3">
+                {!['item_1737200000001', 'item_1737200000002', 'item_1737200000003', 'item_1737200000004', 'item_1737200000005'].includes(col.key) && (
                 <div className="space-y-1 flex-1">
                     <Label className="text-[10px] text-muted-foreground">Group Name (Optional)</Label>
                     <Input 
@@ -667,6 +854,8 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         placeholder="e.g. Tax Details"
                     />
                 </div>
+                )}
+                {col.key !== 'item_1737200000001' && (
                 <div className="space-y-1 w-24">
                     <Label className="text-[10px] text-muted-foreground">Data Type</Label>
                     <select 
@@ -677,9 +866,10 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                       <option value="" disabled>Select Type</option>
                       <option value="text">Text</option>
                       <option value="number">Number</option>
-                      <option value="formula">Formula (f(x))</option>
+                      <option value="formula">Formula</option>
                     </select>
                 </div>
+                )}
             </div>
             
             {col.type === 'formula' && (
@@ -728,7 +918,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                }
                            }
                         }}
-                        placeholder="( [Qty] * [Price] ) / 100"
+                        placeholder="([Quantity] * [Price]) / 100"
                         className="font-mono text-sm tracking-wide bg-white"
                       />
                       {/* Simple Validator Feedback */}
@@ -793,6 +983,56 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
   
   const renderCustomerDetails = () => (
     <div className="space-y-8">
+        <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Customer Details Settings</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="flex items-center justify-between border rounded-md p-2">
+                    <Label className="text-sm cursor-pointer" htmlFor="cd-show-label">Show Label</Label>
+                    <Switch 
+                        id="cd-show-label"
+                        checked={template.customerDetails.displayStyle?.showLabel ?? true} 
+                        onCheckedChange={(checked) => {
+                            const newT = {...template};
+                            if (!newT.customerDetails.displayStyle) newT.customerDetails.displayStyle = {};
+                            newT.customerDetails.displayStyle.showLabel = checked;
+                            setTemplate(newT);
+                        }} 
+                    />
+                 </div>
+                 <div className="flex items-center justify-between border rounded-md p-2">
+                    <Label className="text-sm cursor-pointer" htmlFor="cd-bold-label">Bold Label</Label>
+                    <Switch 
+                        id="cd-bold-label"
+                        checked={template.customerDetails.displayStyle?.labelBold ?? false} 
+                        onCheckedChange={(checked) => {
+                            const newT = {...template};
+                            if (!newT.customerDetails.displayStyle) newT.customerDetails.displayStyle = {};
+                            newT.customerDetails.displayStyle.labelBold = checked;
+                            setTemplate(newT);
+                        }} 
+                    />
+                 </div>
+            </div>
+
+             <div className="space-y-2">
+                <Label className="text-sm font-medium">Label Position</Label>
+                <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={template.customerDetails.displayStyle?.layout || 'col'}
+                    onChange={e => {
+                        const newT = {...template};
+                        if (!newT.customerDetails.displayStyle) newT.customerDetails.displayStyle = {};
+                        newT.customerDetails.displayStyle.layout = e.target.value;
+                        setTemplate(newT);
+                    }}
+                >
+                    <option value="col">Top-Bottom</option>
+                    <option value="row">Left-Right</option>
+                </select>
+             </div>
+        </div>
+
         {/* Billing Section */}
         <div className="space-y-4">
            <div className="p-4 bg-card border rounded-lg shadow-sm space-y-4">
@@ -876,7 +1116,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                 </Button>
                             </div>
                          </div>
-                         <div className="pt-1">
+                         <div className="pt-1 flex gap-2">
                             <Input 
                                 value={field.label} 
                                 onChange={(e) => {
@@ -884,9 +1124,22 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                     newT.customerDetails.billing.fields[idx].label = e.target.value;
                                     setTemplate(newT);
                                 }} 
-                                className="h-7 text-xs"
+                                className="h-7 text-xs flex-1"
                                 placeholder="Display Label"
                             />
+                             <select
+                                 className="h-7 w-20 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                 value={field.type || 'text'}
+                                 onChange={(e) => {
+                                     const newT = {...template};
+                                     newT.customerDetails.billing.fields[idx].type = e.target.value;
+                                     setTemplate(newT);
+                                 }}
+                             >
+                                 <option value="text">Text</option>
+                                 <option value="number">Number</option>
+                                 <option value="date">Date</option>
+                             </select>
                         </div>
                      </div>
                      </>
@@ -982,7 +1235,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                 </Button>
                             </div>
                          </div>
-                         <div className="pt-1">
+                         <div className="pt-1 flex gap-2">
                             <Input 
                                 value={field.label} 
                                 onChange={(e) => {
@@ -990,9 +1243,22 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                     newT.customerDetails.shipping.fields[idx].label = e.target.value;
                                     setTemplate(newT);
                                 }} 
-                                className="h-7 text-xs"
+                                className="h-7 text-xs flex-1"
                                 placeholder="Display Label"
                             />
+                             <select
+                                 className="h-7 w-20 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                 value={field.type || 'text'}
+                                 onChange={(e) => {
+                                     const newT = {...template};
+                                     newT.customerDetails.shipping.fields[idx].type = e.target.value;
+                                     setTemplate(newT);
+                                 }}
+                             >
+                                 <option value="text">Text</option>
+                                 <option value="number">Number</option>
+                                 <option value="date">Date</option>
+                             </select>
                         </div>
                      </div>
                      </>
@@ -1016,7 +1282,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
              <Button 
                 onClick={() => {
                     const newT = {...template};
-                    newT.summary.fields.push({ key: `total_${Date.now()}`, label: "Total Qty", visible: true, type: "manual" });
+                    newT.summary.fields.push({ key: `total_${Date.now()}`, label: "New Total", visible: true, type: "system", function: "sum", sourceColumn: "" });
                     setTemplate(newT);
                 }}
                 size="sm" 
@@ -1049,6 +1315,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                         <span className="font-semibold text-gray-700 text-sm">{field.label || 'Field'}</span>
                     </div>
                     
+                    {!(['total_qty', 'total_tax', 'total_amount'].includes(field.key)) && (
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -1061,6 +1328,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     >
                         <Trash2 className="w-3 h-3" />
                     </Button>
+                    )}
                  </div>
 
                  <div className="grid grid-cols-2 gap-4 pt-2 border-t mt-2">
@@ -1072,30 +1340,53 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                             className="h-7 text-xs"
                         />
                     </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4 pt-2">
                      <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">Value Source</Label>
+                        <Label className="text-[10px] text-muted-foreground">Function</Label>
+                        <select 
+                            className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={field.function || 'sum'}
+                            onChange={(e) => {
+                                const newT = JSON.parse(JSON.stringify(template));
+                                newT.summary.fields[idx].function = e.target.value;
+                                newT.summary.fields[idx].type = 'system';
+                                setTemplate(newT);
+                            }}
+                        >
+                            <option value="sum">Addition (Sum)</option>
+                            <option value="sub">Subtraction (Sub)</option>
+                            <option value="mul">Multiplication (Mul)</option>
+                            <option value="avg">Average (Avg)</option>
+                            <option value="max">Maximum (Max)</option>
+                            <option value="min">Minimum (Min)</option>
+                        </select>
+                    </div>
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Source Column</Label>
                         <select 
                             className="flex h-7 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             value={field.sourceColumn || ''}
                             onChange={(e) => {
-                                const val = e.target.value;
                                 const newT = JSON.parse(JSON.stringify(template));
-                                newT.summary.fields[idx].sourceColumn = val;
-                                // If source is selected, it's calculated. Else manual.
-                                // We don't necessarily need a 'type' field if sourceColumn presence detects it, but good for clarity
+                                newT.summary.fields[idx].sourceColumn = e.target.value;
+                                newT.summary.fields[idx].type = 'system';
+                                // Ensure function has a default value when source column is selected
+                                if (!newT.summary.fields[idx].function) {
+                                    newT.summary.fields[idx].function = 'sum';
+                                }
                                 setTemplate(newT);
                             }}
                         >
-                            <option value="">Manual Input</option>
-                            <optgroup label="Sum of Table Column">
-                                {template.table.columns
-                                    .filter(col => col.key !== 'sno' && col.key !== 'description')
-                                    .map(col => (
-                                    <option key={col.key} value={col.key}>
-                                        Sum({col.label})
-                                    </option>
-                                ))}
-                            </optgroup>
+                            <option value="">Select Column</option>
+                            {template.table.columns
+                                .filter(col => col.type === 'number' || col.type === 'formula')
+                                .map(col => (
+                                <option key={col.key} value={col.key}>
+                                    {col.label}
+                                </option>
+                            ))}
                         </select>
                     </div>
                  </div>
@@ -1225,7 +1516,7 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                 </div>
                              </div>
                              
-                             <div className="pt-1">
+                             <div className="pt-1 flex gap-2">
                                 <Input 
                                     value={field.label} 
                                     onChange={(e) => {
@@ -1233,9 +1524,22 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                                         newT.footer.bankDetails.fields[idx].label = e.target.value;
                                         setTemplate(newT);
                                     }} 
-                                    className="h-7 text-xs"
+                                    className="h-7 text-xs flex-1"
                                     placeholder="Display Label (e.g. Bank Name)"
                                 />
+                                 <select
+                                     className="h-7 w-20 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                     value={field.type || 'text'}
+                                     onChange={(e) => {
+                                         const newT = {...template};
+                                         newT.footer.bankDetails.fields[idx].type = e.target.value;
+                                         setTemplate(newT);
+                                     }}
+                                 >
+                                     <option value="text">Text</option>
+                                     <option value="number">Number</option>
+                                     <option value="date">Date</option>
+                                 </select>
                             </div>
                          </div>
                          </>
