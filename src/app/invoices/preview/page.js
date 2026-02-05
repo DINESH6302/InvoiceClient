@@ -223,6 +223,8 @@ export default function InvoicePreviewPage() {
           ...f,
           visible: f.visible !== false,
           sourceColumn: f.source_column || null,
+          symbol: f.symbol,
+          symbolPosition: f.symbol_position || 'left',
           aggregations: f.aggregations ? f.aggregations.map(agg => ({
             function: agg.function || 'sum',
             sourceColumn: agg.source_column || '',
@@ -241,6 +243,8 @@ export default function InvoicePreviewPage() {
           ...f,
           visible: f.visible !== false,
           sourceColumn: f.source_column || null,
+          symbol: f.symbol,
+          symbolPosition: f.symbol_position || 'left',
           aggregations: f.aggregations ? f.aggregations.map(agg => ({
             function: agg.function || 'sum',
             sourceColumn: agg.source_column || '',

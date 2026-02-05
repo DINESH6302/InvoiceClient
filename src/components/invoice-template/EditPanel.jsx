@@ -1494,6 +1494,39 @@ export default function EditPanel({ activeSection, template, setTemplate }) {
                     })()}
                  </div>
 
+                 {/* Symbol & Position Config */}
+                 <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Symbol</Label>
+                        <select
+                            className="flex h-7 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={field.symbol !== undefined ? field.symbol : (
+                                (field.sourceColumn === 'quantity' || (field.label && field.label.toLowerCase().includes('quantity'))) ? '' : '₹'
+                            )}
+                            onChange={(e) => handleFieldChange('summary', idx, 'symbol', e.target.value)}
+                        >
+                            <option value="">None</option>
+                            <option value="₹">Currency</option>
+                            <option value="+">Plus (+)</option>
+                            <option value="-">Minus (-)</option>
+                            <option value="%">Percentage (%)</option>
+                            <option value="~">Approx (~)</option>
+                        </select>
+                    </div>
+                    
+                    <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Position</Label>
+                        <select
+                             className="flex h-7 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                             value={field.symbolPosition || 'left'}
+                             onChange={(e) => handleFieldChange('summary', idx, 'symbolPosition', e.target.value)}
+                        >
+                             <option value="left">Left</option>
+                             <option value="right">Right</option>
+                        </select>
+                    </div>
+                 </div>
+
                  {/* Calculator / Formula Section */}
                  <SummaryFieldEditor 
                     field={field} 

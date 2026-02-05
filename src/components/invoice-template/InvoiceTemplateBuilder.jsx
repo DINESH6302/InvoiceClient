@@ -302,6 +302,8 @@ export default function InvoiceTemplateBuilder({ templateId, onBack }) {
                         sourceColumn: f.source_column || null,
                         function: f.function || null,
                         summaryType: f.analytics_column || "",
+                        symbol: f.symbol || null,
+                        symbolPosition: f.symbol_position || 'left',
                         aggregations: loadedAggs,
                         formula: f.formula || reconstructFormula(loadedAggs) // Use stored or reconstructed formula
                     };
@@ -642,7 +644,9 @@ export default function InvoiceTemplateBuilder({ templateId, onBack }) {
                                                 label: f.label,
                                                 bold: f.bold || false,
                                                 type: hasAggregations || hasSource ? 'system' : (f.type || 'manual'),
-                                                analytics_column: f.summaryType || null
+                                                analytics_column: f.summaryType || null,
+                                                symbol: f.symbol, // Allow empty string for "None"
+                                                symbol_position: f.symbolPosition || 'left'
                                             };
                                             
                                             if (hasAggregations) {

@@ -509,9 +509,7 @@ export default function InvoicesPage() {
                     >
                         <option value="ALL">All Status</option>
                         <option value="DRAFT">Draft</option>
-                        <option value="SENT">Sent</option>
-                        <option value="PAID">Paid</option>
-                        <option value="CANCELLED">Cancelled</option>
+                        <option value="GENERATED">Generated</option>
                     </select>
                     <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 transition-colors" />
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -561,29 +559,6 @@ export default function InvoicesPage() {
               </span>
               <div className="h-4 w-px bg-blue-200"></div>
               
-              <div className="relative" ref={statusDropdownRef}>
-                <button 
-                  onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                  disabled={isBulkUpdating}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 hover:text-blue-600 hover:border-blue-300 border border-slate-200 rounded-lg text-sm font-medium transition-all shadow-sm disabled:opacity-50"
-                >
-                   {isBulkUpdating ? <Loader2 size={14} className="animate-spin" /> : "Update Status"}
-                   <ChevronDown size={14} />
-                </button>
-                {showStatusDropdown && (
-                  <div className="absolute top-full left-0 mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                    {['DRAFT', 'SENT', 'PAID', 'CANCELLED'].map(status => (
-                      <button
-                        key={status}
-                        onClick={() => handleBulkStatusUpdate(status)}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
               <button className="flex items-center gap-2 px-3 py-1.5 bg-white text-purple-600 hover:bg-purple-50 hover:border-purple-300 border border-slate-200 rounded-lg text-sm font-medium transition-all shadow-sm">
                 <FileDown size={16} />
                 Generate Selected
@@ -738,13 +713,9 @@ export default function InvoicesPage() {
                       </td>
                       <td className="pl-6 pr-2 py-4 text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                          inv.invoice_status === 'PAID' 
+                          inv.invoice_status === 'GENERATED' 
                             ? 'bg-green-50 text-green-700 border-green-300' 
-                            : inv.invoice_status === 'DRAFT'
-                            ? 'bg-slate-100 text-slate-600 border-slate-300'
-                            : inv.invoice_status === 'CANCELLED'
-                            ? 'bg-red-50 text-red-700 border-red-300'
-                            : 'bg-yellow-50 text-yellow-700 border-yellow-300'
+                            : 'bg-slate-100 text-slate-600 border-slate-300'
                         }`}>
                           {inv.invoice_status}
                         </span>

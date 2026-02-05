@@ -1037,16 +1037,46 @@ export default function CreateInvoiceClient() {
                       <div className="space-y-3">
                           {template.total?.fields?.map((field) => {
                              const calculatedValue = calculateSummaryValue(field);
-                             const formattedValue = calculatedValue.toLocaleString('en-IN', { 
+                             
+                             // Determine Symbol & Position
+                             // Default to Currency '₹' on Left if not specified, or respect settings
+                             // BUT user requirement: "Symbol dropdown should have 'Currency', ..."
+                             // If symbol is provided, use it. If not, fallback based on type maybe?
+                             // Existing code defaulted to ₹ for everything except 'quantity'?
+                             // Let's stick to the configuration.
+                             
+                             const rawVal = calculatedValue.toLocaleString('en-IN', { 
                                minimumFractionDigits: 2, 
                                maximumFractionDigits: 2 
                              });
+
+                             // Logic: 
+                             // If symbol is set (including empty string ""), use it.
+                             // If symbol is null/undefined, fallback to legacy defaults.
                              
+                             let symbol = field.symbol;
+                             
+                             // Strict check for null/undefined to allow "" (None) to pass through
+                             if (symbol == null && field.label?.toLowerCase() !== 'quantity' && !field.analytics_column?.toLowerCase().includes('quantity')) {
+                                // Default to ₹ for Amount-like fields in legacy templates
+                                if (field.label?.toLowerCase().includes('total') || field.label?.toLowerCase().includes('tax') || field.label?.toLowerCase().includes('amount')) {
+                                     symbol = '₹';
+                                }
+                             }
+                             
+                             const position = field.symbol_position || 'left';
+                             
+                             let formattedValue = rawVal;
+                             if (symbol) {
+                                 if (position === 'right') formattedValue = `${rawVal} ${symbol}`;
+                                 else formattedValue = `${symbol} ${rawVal}`;
+                             }
+
                              if(field.label === 'Total' || field.label === 'Grand Total') {
                                  return (
                                      <div key={field.key} className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
                                          <span className="text-sm font-bold text-slate-800">{field.label}</span>
-                                         <span className="text-lg font-bold text-blue-600">₹ {formattedValue}</span>
+                                         <span className="text-lg font-bold text-blue-600">{formattedValue}</span>
                                      </div>
                                  )
                              }

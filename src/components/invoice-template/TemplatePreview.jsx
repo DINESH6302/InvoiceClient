@@ -597,6 +597,7 @@ export default function TemplatePreview({ template, renderData }) {
                 // Calculate value based on aggregations array or legacy sourceColumn
                 let displayValue = '--';
                 let aggregateValue = 0;
+                let isCalculationError = false;
                 
                 if (field.formula) {
                     try {
@@ -615,23 +616,38 @@ export default function TemplatePreview({ template, renderData }) {
                          // Filter out potentially dangerous characters, though new Function is used
                          const result = new Function(`return (${expr})`)();
                          aggregateValue = Number.isFinite(result) ? result : 0;
-                         displayValue = '₹ ' + aggregateValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     } catch (e) {
                          // console.warn("Formula Error", e);
                          displayValue = 'Error';
+                         isCalculationError = true;
                     }
                 } else if (field.aggregations && field.aggregations.length > 0) {
                     // New chained aggregations format
                     aggregateValue = calculateChainedAggregations(field.aggregations);
-                    displayValue = '₹ ' + aggregateValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 } else if (field.sourceColumn) {
                     // Legacy single aggregation format
                     aggregateValue = calculateColumnAggregate(field.sourceColumn, field.function || 'sum');
-                    
-                    if (field.sourceColumn === 'quantity') displayValue = aggregateValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    else displayValue = '₹ ' + aggregateValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 } else if (field.key === 'grand_total') {
-                     displayValue = '₹ ' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                     aggregateValue = grandTotal;
+                }
+
+                if (!isCalculationError) {
+                     const rawVal = aggregateValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                     
+                     // Determine Symbol
+                     // If explicit symbol string exists (even empty), use it.
+                     // Only fallback if property is missing (undefined/null).
+                     let symbol = field.symbol;
+                     
+                     // Helper to handle both camelCase (internal state) and snake_case (API payload)
+                     const position = field.symbolPosition || field.symbol_position || 'left';
+                     
+                     if (symbol) {
+                         if (position === 'right') displayValue = `${rawVal} ${symbol}`;
+                         else displayValue = `${symbol} ${rawVal}`;
+                     } else {
+                         displayValue = rawVal;
+                     }
                 }
 
                 return (
