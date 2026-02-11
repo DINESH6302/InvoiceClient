@@ -66,7 +66,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       // Remove leading slash from endpoint if present to join cleanly, or let URL constructor handle it?
       // Let's keep it simple: Replace /v1 prefix if it exists in endpoint to avoid duplication if API_BASE_URL has it.
       
-      const cleanPath = path.replace('/api/v1/', '');
+      const cleanPath = path.replace('/api/v1/', '/');
       url = `${API_BASE_URL}${cleanPath}`;
   }
 
